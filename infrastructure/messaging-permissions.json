@@ -1,0 +1,60 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sqs:CreateQueue",
+        "sqs:DeleteQueue",
+        "sqs:GetQueueAttributes",
+        "sqs:GetQueueUrl",
+        "sqs:ListQueues",
+        "sqs:SetQueueAttributes",
+        "sqs:TagQueue",
+        "sqs:UntagQueue",
+        "sqs:ListQueueTags",
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:PurgeQueue"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sns:CreateTopic",
+        "sns:DeleteTopic",
+        "sns:GetTopicAttributes",
+        "sns:ListTopics",
+        "sns:Publish",
+        "sns:TagResource",
+        "sns:UntagResource",
+        "sns:ListTagsForResource",
+        "sns:Subscribe",
+        "sns:Unsubscribe"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "events:CreateEventBus",
+        "events:DeleteEventBus",
+        "events:DescribeEventBus",
+        "events:ListEventBuses",
+        "events:PutEvents",
+        "events:PutRule",
+        "events:PutTargets",
+        "events:RemoveTargets",
+        "events:DeleteRule",
+        "events:TagResource",
+        "events:UntagResource",
+        "events:ListTagsForResource",
+        "events:ListRules",
+        "events:ListTargetsByRule"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

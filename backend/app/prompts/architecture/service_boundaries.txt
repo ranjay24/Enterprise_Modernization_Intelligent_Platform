@@ -1,0 +1,50 @@
+# prompt:architecture/service_boundaries
+# version: 2.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Generate detailed microservice boundaries
+
+Analyze the following codebase and identify optimal microservice boundaries.
+
+CLASSES:
+{{classes_summary_json}}
+
+PACKAGE TREE:
+{{package_tree_json}}
+
+ENDPOINTS:
+{{endpoints_summary_json}}
+
+DEPENDENCY SUMMARY:
+- Edges: {{dependency_edge_count}}
+- Circular: {{circular_dep_count}}
+- High coupling: {{high_coupling_count}}
+
+GOD CLASSES:
+{{god_classes_json}}
+
+For each service boundary provide:
+{
+  "name": "ServiceName",
+  "description": "What the service does",
+  "cohesion_score": 0-100,
+  "coupling_score": 0-100,
+  "classes": ["Class1", "Class2"],
+  "packages": ["com.example.pkg"],
+  "api_endpoints": [{"method": "GET", "path": "/api/resource"}],
+  "database_tables": [],
+  "confidence": 0.0-1.0,
+  "readiness": "green|yellow|red",
+  "risk_level": "low|medium|high|critical",
+  "business_capability": "Business domain"
+}
+
+RULES:
+1. Use actual class names from the codebase
+2. God classes MUST be decomposed
+3. Circular dependencies MUST be broken
+4. Group by BUSINESS DOMAIN not technical layer
+5. Each service should own its data
+6. Low coupling services extracted first
+
+Return ONLY valid JSON: {"services": [...], "total_services": N, "business_capabilities": [...]}

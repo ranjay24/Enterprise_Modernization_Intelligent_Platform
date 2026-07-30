@@ -1,0 +1,322 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── v2 Core palette ── */
+    --bg-base: #F7F8FA;
+    --bg-elevated: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --bg-glass: rgba(255,255,255,0.7);
+    --border-subtle: #E4E7EC;
+    --border-strong: #C8CDD6;
+    --text-primary: #10151F;
+    --text-secondary: #4B5768;
+    --text-muted: #8A94A6;
+
+    --accent-blue: #3B82F6;
+    --accent-blue-strong: #2563EB;
+    --accent-purple: #8B6CF6;
+    --accent-purple-strong: #7C3AED;
+    --risk: #EF4444;
+    --warning: #F59E0B;
+    --success: #10B981;
+    --analytics: #6366F1;
+    --architecture: #14B8A6;
+
+    /* ── Gradient/glow tokens (hero/AI only) ── */
+    --glow-blue: radial-gradient(circle at top left, rgba(59,130,246,0.24), transparent 60%);
+    --glow-purple: radial-gradient(circle at top left, rgba(139,92,246,0.24), transparent 60%);
+    --border-gradient: linear-gradient(135deg, rgba(59,130,246,0.5), rgba(139,92,246,0.35));
+
+    /* ── Backward-compat aliases (HSL triples for tailwind) ── */
+    --background: 220 14% 97%;
+    --foreground: 220 40% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 9%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 95%;
+    --secondary-foreground: 220 40% 9%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 15% 60%;
+    --accent: 220 14% 95%;
+    --accent-foreground: 220 40% 9%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 216 12% 91%;
+    --input: 216 12% 91%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+
+    --surface: 220 14% 97%;
+    --surface-hover: 220 14% 93%;
+    --panel: 0 0% 100%;
+    --panel-border: 216 12% 91%;
+    --sidebar: 0 0% 100%;
+    --sidebar-hover: 220 14% 95%;
+    --sidebar-active: 217 91% 60%;
+    --sidebar-foreground: 220 40% 9%;
+    --sidebar-muted: 220 15% 60%;
+
+    --success-bg: 152 76% 95%;
+    --success-foreground: 0 0% 100%;
+    --warning-bg: 38 92% 95%;
+    --warning-foreground: 220 40% 9%;
+    --danger-bg: 0 84% 95%;
+    --danger-foreground: 0 0% 100%;
+    --info-bg: 217 91% 95%;
+
+    --risk-critical: 0 72% 51%;
+    --risk-critical-bg: 0 72% 95%;
+    --risk-high: 15 80% 52%;
+    --risk-high-bg: 15 80% 95%;
+    --risk-medium: 38 92% 50%;
+    --risk-medium-bg: 48 100% 96%;
+    --risk-low: 142.1 76.2% 36.3%;
+    --risk-low-bg: 142.1 76.2% 95%;
+
+    --stage-extraction: 221.2 83.2% 53.3%;
+    --stage-static-analysis: 230 70% 55%;
+    --stage-enterprise: 260 65% 58%;
+    --stage-ai-boundaries: 285 60% 60%;
+    --stage-ai-readiness: 201 80% 50%;
+    --stage-ai-adrs: 190 75% 45%;
+    --stage-ai-migration: 170 70% 42%;
+    --stage-ai-cost: 142.1 76.2% 36.3%;
+    --stage-ai-explain: 30 85% 55%;
+    --stage-results: 0 0% 45%;
+    --stage-report: 340 70% 50%;
+    --stage-manifest: 270 60% 52%;
+
+    --score-excellent: 142.1 76.2% 36.3%;
+    --score-good: 201 80% 50%;
+    --score-fair: 38 92% 50%;
+    --score-poor: 0 72% 51%;
+
+    /* ── Elevation / shadow tokens ── */
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.06), 0 4px 6px rgba(0,0,0,0.04);
+    --shadow-xl: 0 20px 25px rgba(0,0,0,0.08), 0 8px 10px rgba(0,0,0,0.04);
+    --shadow-drawer: -4px 0 24px rgba(0,0,0,0.1);
+    --shadow-modal: 0 20px 60px rgba(0,0,0,0.15);
+    --shadow-glass: 0 8px 32px rgba(0,0,0,0.08);
+
+    /* ── Typography tokens ── */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'SF Pro Display', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.8125rem;
+    --font-size-base: 0.875rem;
+    --font-size-lg: 1rem;
+    --font-size-xl: 1.125rem;
+    --font-size-2xl: 1.25rem;
+    --font-size-3xl: 1.5rem;
+    --font-size-4xl: 1.875rem;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 650;
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.625;
+
+    /* ── Spacing tokens (4px base) ── */
+    --spacing-1: 0.25rem;
+    --spacing-2: 0.5rem;
+    --spacing-3: 0.75rem;
+    --spacing-4: 1rem;
+    --spacing-5: 1.25rem;
+    --spacing-6: 1.5rem;
+    --spacing-8: 2rem;
+    --spacing-10: 2.5rem;
+    --spacing-12: 3rem;
+    --spacing-16: 4rem;
+    --spacing-20: 5rem;
+
+    /* ── Radius tokens ── */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-full: 9999px;
+
+    /* ── Transition tokens ── */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --duration-instant: 100ms;
+    --duration-fast: 150ms;
+    --duration-base: 200ms;
+    --duration-slow: 300ms;
+    --duration-page: 400ms;
+  }
+
+  .dark {
+    --bg-base: #0A0E17;
+    --bg-elevated: #10151F;
+    --bg-card: #131A28;
+    --bg-glass: rgba(19,26,40,0.6);
+    --border-subtle: #1E2735;
+    --border-strong: #2E3B52;
+    --text-primary: #EDEFF3;
+    --text-secondary: #9AA5B8;
+    --text-muted: #616E85;
+
+    --accent-blue: #4F9CF9;
+    --accent-blue-strong: #2E7DF0;
+    --accent-purple: #A78BFA;
+    --accent-purple-strong: #8B6EF0;
+    --risk: #FB4B6C;
+    --warning: #F5A623;
+    --success: #2FD97F;
+    --analytics: #6E7CF6;
+    --architecture: #22C6B0;
+
+    --glow-blue: radial-gradient(circle at top left, rgba(79,156,249,0.35), transparent 60%);
+    --glow-purple: radial-gradient(circle at top left, rgba(167,139,250,0.35), transparent 60%);
+    --border-gradient: linear-gradient(135deg, rgba(79,156,249,0.6), rgba(167,139,250,0.4));
+
+    --background: 220 40% 6%;
+    --foreground: 220 20% 94%;
+    --card: 220 35% 12%;
+    --card-foreground: 220 20% 94%;
+    --primary: 214 93% 64%;
+    --primary-foreground: 220 40% 9%;
+    --secondary: 220 28% 14%;
+    --secondary-foreground: 220 20% 94%;
+    --muted: 220 28% 14%;
+    --muted-foreground: 216 16% 45%;
+    --accent: 220 28% 14%;
+    --accent-foreground: 220 20% 94%;
+    --destructive: 350 96% 64%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 28% 16%;
+    --input: 220 28% 16%;
+    --ring: 214 93% 64%;
+
+    --sidebar: 220 32% 9%;
+    --sidebar-hover: 220 28% 16%;
+    --sidebar-active: 214 93% 64%;
+    --sidebar-foreground: 220 20% 94%;
+    --sidebar-muted: 216 16% 45%;
+
+    --success-bg: 148 68% 10%;
+    --success-foreground: 0 0% 100%;
+    --warning-bg: 40 91% 10%;
+    --warning-foreground: 0 0% 100%;
+    --danger-bg: 350 96% 12%;
+    --danger-foreground: 0 0% 100%;
+    --info-bg: 214 93% 12%;
+
+    --risk-critical: 0 72% 56%;
+    --risk-critical-bg: 0 72% 12%;
+    --risk-high: 15 80% 56%;
+    --risk-high-bg: 15 80% 12%;
+    --risk-medium: 48 96% 53%;
+    --risk-medium-bg: 48 96% 10%;
+    --risk-low: 142.1 70.6% 45.3%;
+    --risk-low-bg: 142.1 70.6% 10%;
+
+    --stage-extraction: 217.2 91.2% 59.8%;
+    --stage-static-analysis: 230 75% 65%;
+    --stage-enterprise: 260 70% 68%;
+    --stage-ai-boundaries: 285 65% 70%;
+    --stage-ai-readiness: 201 85% 60%;
+    --stage-ai-adrs: 190 80% 55%;
+    --stage-ai-migration: 170 75% 50%;
+    --stage-ai-cost: 142.1 70.6% 45.3%;
+    --stage-ai-explain: 30 90% 60%;
+    --stage-results: 0 0% 55%;
+    --stage-report: 340 75% 60%;
+    --stage-manifest: 270 65% 62%;
+
+    --score-excellent: 142.1 70.6% 45.3%;
+    --score-good: 201 85% 60%;
+    --score-fair: 48 96% 53%;
+    --score-poor: 0 72% 56%;
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.25);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.3), 0 4px 6px rgba(0,0,0,0.2);
+    --shadow-xl: 0 20px 25px rgba(0,0,0,0.35), 0 8px 10px rgba(0,0,0,0.2);
+    --shadow-drawer: -4px 0 24px rgba(0,0,0,0.4);
+    --shadow-modal: 0 20px 60px rgba(0,0,0,0.5);
+    --shadow-glass: 0 8px 32px rgba(0,0,0,0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-[var(--border)];
+  }
+
+  html {
+    font-family: var(--font-sans);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+  }
+
+  /* ── Typography utility classes ── */
+  .text-display { font-size: 1.75rem; font-weight: 650; line-height: 1.2; letter-spacing: -0.025em; }
+  .text-h1 { font-size: var(--font-size-4xl); font-weight: var(--font-weight-bold); line-height: var(--line-height-tight); letter-spacing: -0.02em; }
+  .text-h2 { font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold); line-height: var(--line-height-tight); letter-spacing: -0.015em; }
+  .text-h3 { font-size: var(--font-size-2xl); font-weight: var(--font-weight-semibold); line-height: var(--line-height-tight); }
+  .text-h4 { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); line-height: var(--line-height-tight); }
+  .text-body { font-size: var(--font-size-base); font-weight: var(--font-weight-normal); line-height: var(--line-height-normal); }
+  .text-body-sm { font-size: var(--font-size-sm); font-weight: var(--font-weight-normal); line-height: var(--line-height-normal); }
+  .text-caption { font-size: var(--font-size-xs); font-weight: var(--font-weight-normal); line-height: var(--line-height-relaxed); }
+  .text-label { font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); line-height: var(--line-height-normal); text-transform: uppercase; letter-spacing: 0.06em; }
+  .text-mono { font-family: var(--font-mono); font-size: var(--font-size-sm); }
+  .text-number { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  /* ── Hero number (5xl) — used once per app ── */
+  .text-hero { font-size: 3rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  @screen sm { .text-hero { font-size: 3.75rem; } }
+
+  /* ── Scrollbar styling ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.35); }
+
+  /* ── Glass effect ── */
+  .glass { background: var(--bg-glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .glass-strong { background: var(--bg-glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+
+  /* ── Focus ring ── */
+  .focus-ring { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-blue)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-base)]; }
+
+  /* ── Selection ── */
+  ::selection { background: rgba(79,156,249,0.25); color: var(--text-primary); }
+
+  /* ── Gradient border utility ── */
+  .gradient-border { position: relative; }
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--border-gradient);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* ── Glow utility (positioned, not full-card) ── */
+  .glow-blue { background-image: var(--glow-blue); }
+  .glow-purple { background-image: var(--glow-purple); }
+}

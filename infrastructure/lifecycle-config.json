@@ -1,0 +1,14 @@
+{
+  "Rules": [
+    {
+      "ID": "CleanupOldAnalysis",
+      "Status": "Enabled",
+      "Transitions": [
+        {
+          "Days": 30,
+          "StorageClass": "GLACIER"
+        }
+      ]
+    }
+  ]
+}

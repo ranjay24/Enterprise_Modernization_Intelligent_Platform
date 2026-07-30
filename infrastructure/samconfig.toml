@@ -1,0 +1,18 @@
+version = 0.1
+
+[default.build.parameters]
+parallel = true
+base_dir = "../backend"
+template_file = "../infrastructure/template.yaml"
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+stack_name = "emip-backend"
+resolve_s3 = true
+s3_prefix = "emip/deploy"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM"
+parameter_overrides = "Environment=dev"

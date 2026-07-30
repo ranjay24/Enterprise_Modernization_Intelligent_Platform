@@ -1,0 +1,112 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1.0",
+    "title": "EMIP Backend API"
+  },
+  "basePath": "/",
+  "schemes": ["https"],
+  "paths": {
+    "/{proxy+}": {
+      "options": {
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "summary": "CORS support",
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "requestTemplates": {
+            "application/json": "{\n  \"statusCode\" : 200\n}\n"
+          },
+          "responses": {
+            "default": {
+              "statusCode": "200",
+              "responseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'*'",
+                "method.response.header.Access-Control-Allow-Headers": "'*'"
+              },
+              "responseTemplates": {
+                "application/json": "{}\n"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default response for CORS method",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "x-amazon-apigateway-any-method": {
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "type": "aws_proxy",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:479752407378:function:emip-backend-dev/invocations"
+        },
+        "responses": {}
+      }
+    },
+    "/": {
+      "options": {
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "summary": "CORS support",
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "requestTemplates": {
+            "application/json": "{\n  \"statusCode\" : 200\n}\n"
+          },
+          "responses": {
+            "default": {
+              "statusCode": "200",
+              "responseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Methods": "'*'",
+                "method.response.header.Access-Control-Allow-Headers": "'*'"
+              },
+              "responseTemplates": {
+                "application/json": "{}\n"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default response for CORS method",
+            "headers": {
+              "Access-Control-Allow-Origin": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Headers": {
+                "type": "string"
+              },
+              "Access-Control-Allow-Methods": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "x-amazon-apigateway-any-method": {
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "type": "aws_proxy",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:479752407378:function:emip-backend-dev/invocations"
+        },
+        "responses": {}
+      }
+    }
+  },
+  "x-amazon-apigateway-binary-media-types": ["*/*"]
+}

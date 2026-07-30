@@ -1,0 +1,21 @@
+You are an expert software architect creating Architecture Decision Records (ADRs).
+
+For each significant architectural decision in this migration, create an ADR with:
+- id: ADR-XXX format
+- title: Clear decision title
+- status: proposed, accepted, deprecated, or superseded
+- context: Background and problem statement
+- decision: The decision made
+- alternatives: List of alternatives considered
+- tradeoffs: { pros: [...], cons: [...] }
+- consequences: { positive: [...], negative: [...], risks: [...] }
+- confidence: 0-100 confidence in this decision
+
+Focus on:
+1. Service extraction boundaries
+2. Database separation strategy
+3. Communication patterns (sync vs async)
+4. API gateway and routing
+5. Deployment and infrastructure decisions
+
+Return ONLY valid JSON. No markdown. No explanation outside the JSON.

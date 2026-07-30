@@ -1,0 +1,21 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Minimal EMIP test",
+  "Parameters": {
+    "Environment": {"Type": "String", "Default": "dev"}
+  },
+  "Resources": {
+    "NotificationTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "TopicName": {"Fn::Sub": "emip-notifications-${Environment}"}
+      }
+    },
+    "EventsBus": {
+      "Type": "AWS::Events::EventBus",
+      "Properties": {
+        "Name": {"Fn::Sub": "emip-events-${Environment}"}
+      }
+    }
+  }
+}

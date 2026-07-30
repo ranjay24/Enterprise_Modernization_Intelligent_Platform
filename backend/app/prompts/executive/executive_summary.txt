@@ -1,0 +1,91 @@
+# prompt:executive/executive_summary
+# version: 2.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Generate executive-friendly modernization summary
+
+Generate an executive summary of the modernization analysis for non-technical stakeholders.
+
+PROJECT: {{project_name}}
+MODERNIZATION SCORE: {{modernization_score}}
+MIGRATION COMPLEXITY: {{migration_complexity}}
+
+CODEBASE SIZE:
+- Classes: {{total_classes}}
+- Lines of Code: {{total_lines}}
+- Endpoints: {{total_endpoints}}
+
+RISK SUMMARY:
+- Critical Risks: {{critical_risk_count}}
+- High Risks: {{high_risk_count}}
+- Total Findings: {{total_risk_count}}
+
+READINESS:
+- Overall: {{readiness_score}}
+- Cloud Readiness: {{cloud_readiness_score}}
+
+COST ESTIMATE:
+- Current Monthly: ${{current_monthly}}
+- Post-Migration Monthly: ${{post_monthly}}
+- Annual Savings: ${{annual_savings}}
+
+CANDIDATE SERVICES: {{candidate_service_count}}
+MIGRATION WAVES: {{wave_count}}
+ESTIMATED TIMELINE: {{timeline_weeks}} weeks
+
+Generate:
+{
+  "project_name": "{{project_name}}",
+  "overall_modernization_score": 0-100,
+  "modernization_grade": "A|B|C|D|F",
+  "executive_summary": "2-3 paragraph executive-friendly summary",
+  "business_risks": [
+    {
+      "risk_id": "BR-001",
+      "title": "Risk title",
+      "description": "Plain language description",
+      "severity": "low|medium|high|critical",
+      "likelihood": "low|medium|high",
+      "impact": "Business impact description",
+      "mitigation": "How to mitigate"
+    }
+  ],
+  "cost_impact": {
+    "current_monthly_estimate": N,
+    "post_migration_monthly_estimate": N,
+    "monthly_savings": N,
+    "annual_savings": N,
+    "one_time_migration_cost": N,
+    "payback_period_months": N,
+    "roi_percentage": N,
+    "confidence": 0.0-1.0
+  },
+  "cloud_readiness": {
+    "overall_score": 0-100,
+    "readiness_level": "low|moderate|high",
+    "key_blockers": ["blocker1"],
+    "quick_wins": ["win1"],
+    "estimated_cloud_benefits": ["benefit1"]
+  },
+  "migration_complexity": "low|moderate|high|critical",
+  "estimated_timeline_weeks": N,
+  "recommendations": [
+    {
+      "title": "Recommendation title",
+      "rationale": "Why in plain language",
+      "expected_outcome": "What to expect",
+      "priority": "high|medium|low",
+      "timeline": "When to do this",
+      "investment_required": "What it takes"
+    }
+  ],
+  "key_metrics": {"metric_name": value}
+}
+
+RULES:
+1. Use plain language — no technical jargon
+2. Focus on business outcomes, not technical details
+3. Be honest about risks and timelines
+4. ROI must be conservatively estimated
+
+Return ONLY valid JSON.

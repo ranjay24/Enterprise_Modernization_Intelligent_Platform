@@ -1,0 +1,1637 @@
+{
+ "Resources": {
+  "ArtifactsBucket2AAC5544": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": "emip-artifacts-479752407378",
+    "CorsConfiguration": {
+     "CorsRules": [
+      {
+       "AllowedHeaders": [
+        "*"
+       ],
+       "AllowedMethods": [
+        "PUT",
+        "POST",
+        "GET"
+       ],
+       "AllowedOrigins": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "aws-cdk:auto-delete-objects",
+      "Value": "true"
+     }
+    ],
+    "VersioningConfiguration": {
+     "Status": "Enabled"
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/ArtifactsBucket/Resource"
+   }
+  },
+  "ArtifactsBucketPolicy852CB646": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "ArtifactsBucket2AAC5544"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:PutBucketPolicy",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:DeleteObject*"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": {
+         "Fn::GetAtt": [
+          "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+          "Arn"
+         ]
+        }
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ArtifactsBucket2AAC5544",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "ArtifactsBucket2AAC5544",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/ArtifactsBucket/Policy/Resource"
+   }
+  },
+  "ArtifactsBucketAutoDeleteObjectsCustomResource0E3B4320": {
+   "Type": "Custom::S3AutoDeleteObjects",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "Arn"
+     ]
+    },
+    "BucketName": {
+     "Ref": "ArtifactsBucket2AAC5544"
+    }
+   },
+   "DependsOn": [
+    "ArtifactsBucketPolicy852CB646"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/ArtifactsBucket/AutoDeleteObjectsCustomResource/Default"
+   }
+  },
+  "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role"
+   }
+  },
+  "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-479752407378-us-east-1",
+     "S3Key": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip"
+    },
+    "Timeout": 900,
+    "MemorySize": 128,
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs24.x",
+    "Description": {
+     "Fn::Join": [
+      "",
+      [
+       "Lambda function for auto-deleting objects in ",
+       {
+        "Ref": "ArtifactsBucket2AAC5544"
+       },
+       " S3 bucket."
+      ]
+     ]
+    }
+   },
+   "DependsOn": [
+    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler",
+    "aws:asset:path": "asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6",
+    "aws:asset:property": "Code"
+   }
+  },
+  "JobsTable1970BC16": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "job_id",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "job_id",
+      "KeyType": "HASH"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": true
+    },
+    "TableName": "emip-jobs"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/JobsTable/Resource"
+   }
+  },
+  "AnalysisTableD62A254E": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "job_id",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "analysis_type",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "job_id",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "analysis_type",
+      "KeyType": "RANGE"
+     }
+    ],
+    "TableName": "emip-analysis"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/AnalysisTable/Resource"
+   }
+  },
+  "EMIPVpc86D241EA": {
+   "Type": "AWS::EC2::VPC",
+   "Properties": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsHostnames": true,
+    "EnableDnsSupport": true,
+    "InstanceTenancy": "default",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/Resource"
+   }
+  },
+  "EMIPVpcPublicSubnet1Subnet6DB55141": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.0.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc/PublicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PublicSubnet1/Subnet"
+   }
+  },
+  "EMIPVpcPublicSubnet1RouteTable3F79C628": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc/PublicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PublicSubnet1/RouteTable"
+   }
+  },
+  "EMIPVpcPublicSubnet1RouteTableAssociation6A90F497": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "EMIPVpcPublicSubnet1RouteTable3F79C628"
+    },
+    "SubnetId": {
+     "Ref": "EMIPVpcPublicSubnet1Subnet6DB55141"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PublicSubnet1/RouteTableAssociation"
+   }
+  },
+  "EMIPVpcPublicSubnet1DefaultRoute46F1DEC6": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "EMIPVpcIGW04E3BC8F"
+    },
+    "RouteTableId": {
+     "Ref": "EMIPVpcPublicSubnet1RouteTable3F79C628"
+    }
+   },
+   "DependsOn": [
+    "EMIPVpcVPCGWAFF60EBC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PublicSubnet1/DefaultRoute"
+   }
+  },
+  "EMIPVpcPublicSubnet1EIPB7827B95": {
+   "Type": "AWS::EC2::EIP",
+   "Properties": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc/PublicSubnet1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PublicSubnet1/EIP"
+   }
+  },
+  "EMIPVpcPublicSubnet1NATGateway6000978C": {
+   "Type": "AWS::EC2::NatGateway",
+   "Properties": {
+    "AllocationId": {
+     "Fn::GetAtt": [
+      "EMIPVpcPublicSubnet1EIPB7827B95",
+      "AllocationId"
+     ]
+    },
+    "SubnetId": {
+     "Ref": "EMIPVpcPublicSubnet1Subnet6DB55141"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc/PublicSubnet1"
+     }
+    ]
+   },
+   "DependsOn": [
+    "EMIPVpcPublicSubnet1DefaultRoute46F1DEC6",
+    "EMIPVpcPublicSubnet1RouteTableAssociation6A90F497"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PublicSubnet1/NATGateway"
+   }
+  },
+  "EMIPVpcPublicSubnet2SubnetC7B10671": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.1.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc/PublicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PublicSubnet2/Subnet"
+   }
+  },
+  "EMIPVpcPublicSubnet2RouteTable8185EC74": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc/PublicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PublicSubnet2/RouteTable"
+   }
+  },
+  "EMIPVpcPublicSubnet2RouteTableAssociationB12B929C": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "EMIPVpcPublicSubnet2RouteTable8185EC74"
+    },
+    "SubnetId": {
+     "Ref": "EMIPVpcPublicSubnet2SubnetC7B10671"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PublicSubnet2/RouteTableAssociation"
+   }
+  },
+  "EMIPVpcPublicSubnet2DefaultRouteAACD9229": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "EMIPVpcIGW04E3BC8F"
+    },
+    "RouteTableId": {
+     "Ref": "EMIPVpcPublicSubnet2RouteTable8185EC74"
+    }
+   },
+   "DependsOn": [
+    "EMIPVpcVPCGWAFF60EBC"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PublicSubnet2/DefaultRoute"
+   }
+  },
+  "EMIPVpcPrivateSubnet1SubnetD4F65F10": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.2.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Private"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc/PrivateSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PrivateSubnet1/Subnet"
+   }
+  },
+  "EMIPVpcPrivateSubnet1RouteTable80135A52": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc/PrivateSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PrivateSubnet1/RouteTable"
+   }
+  },
+  "EMIPVpcPrivateSubnet1RouteTableAssociationC88AFBEF": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "EMIPVpcPrivateSubnet1RouteTable80135A52"
+    },
+    "SubnetId": {
+     "Ref": "EMIPVpcPrivateSubnet1SubnetD4F65F10"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PrivateSubnet1/RouteTableAssociation"
+   }
+  },
+  "EMIPVpcPrivateSubnet1DefaultRoute55D46C75": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "EMIPVpcPublicSubnet1NATGateway6000978C"
+    },
+    "RouteTableId": {
+     "Ref": "EMIPVpcPrivateSubnet1RouteTable80135A52"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PrivateSubnet1/DefaultRoute"
+   }
+  },
+  "EMIPVpcPrivateSubnet2Subnet0A16F895": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.3.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "Private"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc/PrivateSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PrivateSubnet2/Subnet"
+   }
+  },
+  "EMIPVpcPrivateSubnet2RouteTable7FB26BEE": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc/PrivateSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PrivateSubnet2/RouteTable"
+   }
+  },
+  "EMIPVpcPrivateSubnet2RouteTableAssociationE765D2A6": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "EMIPVpcPrivateSubnet2RouteTable7FB26BEE"
+    },
+    "SubnetId": {
+     "Ref": "EMIPVpcPrivateSubnet2Subnet0A16F895"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PrivateSubnet2/RouteTableAssociation"
+   }
+  },
+  "EMIPVpcPrivateSubnet2DefaultRoute816AC8CD": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "EMIPVpcPublicSubnet1NATGateway6000978C"
+    },
+    "RouteTableId": {
+     "Ref": "EMIPVpcPrivateSubnet2RouteTable7FB26BEE"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/PrivateSubnet2/DefaultRoute"
+   }
+  },
+  "EMIPVpcIGW04E3BC8F": {
+   "Type": "AWS::EC2::InternetGateway",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "EMIP-Backend/EMIPVpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/IGW"
+   }
+  },
+  "EMIPVpcVPCGWAFF60EBC": {
+   "Type": "AWS::EC2::VPCGatewayAttachment",
+   "Properties": {
+    "InternetGatewayId": {
+     "Ref": "EMIPVpcIGW04E3BC8F"
+    },
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPVpc/VPCGW"
+   }
+  },
+  "EMIPCluster4B5DB87E": {
+   "Type": "AWS::ECS::Cluster",
+   "Properties": {
+    "ClusterSettings": [
+     {
+      "Name": "containerInsights",
+      "Value": "enabled"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPCluster/Resource"
+   }
+  },
+  "TaskRole30FC0FBB": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/TaskRole/Resource"
+   }
+  },
+  "TaskRoleDefaultPolicy07FC53DE": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:GetObject*",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:DeleteObject*",
+        "s3:PutObject",
+        "s3:PutObjectLegalHold",
+        "s3:PutObjectRetention",
+        "s3:PutObjectTagging",
+        "s3:PutObjectVersionTagging",
+        "s3:Abort*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "ArtifactsBucket2AAC5544",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "ArtifactsBucket2AAC5544",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "JobsTable1970BC16",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "JobsTable1970BC16",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "AnalysisTableD62A254E",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "AnalysisTableD62A254E",
+          "Arn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream",
+        "bedrock:GetFoundationModel",
+        "bedrock:ListFoundationModels"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "aws-marketplace:ViewSubscriptions",
+        "aws-marketplace:Subscribe",
+        "aws-marketplace:Unsubscribe"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "TaskRoleDefaultPolicy07FC53DE",
+    "Roles": [
+     {
+      "Ref": "TaskRole30FC0FBB"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/TaskRole/DefaultPolicy/Resource"
+   }
+  },
+  "ExecutionRole605A040B": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/ExecutionRole/Resource"
+   }
+  },
+  "ExecutionRoleDefaultPolicyA5B92313": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          "arn:",
+          {
+           "Ref": "AWS::Partition"
+          },
+          ":ecr:us-east-1:479752407378:repository/cdk-hnb659fds-container-assets-479752407378-us-east-1"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": "ecr:GetAuthorizationToken",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "EMIPLogGroupCAFB96F1",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ExecutionRoleDefaultPolicyA5B92313",
+    "Roles": [
+     {
+      "Ref": "ExecutionRole605A040B"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/ExecutionRole/DefaultPolicy/Resource"
+   }
+  },
+  "EMIPLogGroupCAFB96F1": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/emip/backend",
+    "RetentionInDays": 14
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPLogGroup/Resource"
+   }
+  },
+  "EMIPALB22ABD82D": {
+   "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+   "Properties": {
+    "LoadBalancerAttributes": [
+     {
+      "Key": "deletion_protection.enabled",
+      "Value": "false"
+     }
+    ],
+    "Scheme": "internet-facing",
+    "SecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "EMIPALBSecurityGroup691CA00F",
+       "GroupId"
+      ]
+     }
+    ],
+    "Subnets": [
+     {
+      "Ref": "EMIPVpcPublicSubnet1Subnet6DB55141"
+     },
+     {
+      "Ref": "EMIPVpcPublicSubnet2SubnetC7B10671"
+     }
+    ],
+    "Type": "application"
+   },
+   "DependsOn": [
+    "EMIPVpcPublicSubnet1DefaultRoute46F1DEC6",
+    "EMIPVpcPublicSubnet1RouteTableAssociation6A90F497",
+    "EMIPVpcPublicSubnet2DefaultRouteAACD9229",
+    "EMIPVpcPublicSubnet2RouteTableAssociationB12B929C"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPALB/Resource"
+   }
+  },
+  "EMIPALBSecurityGroup691CA00F": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Automatically created Security Group for ELB EMIPBackendEMIPALB91926CDB",
+    "SecurityGroupIngress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow from anyone on port 80",
+      "FromPort": 80,
+      "IpProtocol": "tcp",
+      "ToPort": 80
+     }
+    ],
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPALB/SecurityGroup/Resource"
+   }
+  },
+  "EMIPALBSecurityGrouptoEMIPBackendAPISecurityGroup1D6F471E80002890FA10": {
+   "Type": "AWS::EC2::SecurityGroupEgress",
+   "Properties": {
+    "Description": "Allow from ALB",
+    "DestinationSecurityGroupId": {
+     "Fn::GetAtt": [
+      "APISecurityGroup03A8566F",
+      "GroupId"
+     ]
+    },
+    "FromPort": 8000,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "EMIPALBSecurityGroup691CA00F",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "ToPort": 8000
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPALB/SecurityGroup/to EMIPBackendAPISecurityGroup1D6F471E:8000"
+   }
+  },
+  "EMIPALBListenerD3D1EEC1": {
+   "Type": "AWS::ElasticLoadBalancingV2::Listener",
+   "Properties": {
+    "DefaultActions": [
+     {
+      "TargetGroupArn": {
+       "Ref": "EMIPALBListenerBackendTargetGroup540E2407"
+      },
+      "Type": "forward"
+     }
+    ],
+    "LoadBalancerArn": {
+     "Ref": "EMIPALB22ABD82D"
+    },
+    "Port": 80,
+    "Protocol": "HTTP"
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPALB/Listener/Resource"
+   }
+  },
+  "EMIPALBListenerBackendTargetGroup540E2407": {
+   "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+   "Properties": {
+    "HealthCheckIntervalSeconds": 30,
+    "HealthCheckPath": "/health",
+    "HealthCheckTimeoutSeconds": 5,
+    "HealthyThresholdCount": 2,
+    "Port": 8000,
+    "Protocol": "HTTP",
+    "TargetGroupAttributes": [
+     {
+      "Key": "stickiness.enabled",
+      "Value": "false"
+     }
+    ],
+    "TargetType": "ip",
+    "UnhealthyThresholdCount": 3,
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPALB/Listener/BackendTargetGroup/Resource"
+   }
+  },
+  "APISecurityGroup03A8566F": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Allow inbound HTTP to API",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "SecurityGroupIngress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow HTTP",
+      "FromPort": 80,
+      "IpProtocol": "tcp",
+      "ToPort": 80
+     }
+    ],
+    "VpcId": {
+     "Ref": "EMIPVpc86D241EA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/APISecurityGroup/Resource"
+   }
+  },
+  "APISecurityGroupfromEMIPBackendEMIPALBSecurityGroup5BC553C3800003A67149": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "Allow from ALB",
+    "FromPort": 8000,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "APISecurityGroup03A8566F",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "EMIPALBSecurityGroup691CA00F",
+      "GroupId"
+     ]
+    },
+    "ToPort": 8000
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/APISecurityGroup/from EMIPBackendEMIPALBSecurityGroup5BC553C3:8000"
+   }
+  },
+  "BackendTaskDef6ECE986E": {
+   "Type": "AWS::ECS::TaskDefinition",
+   "Properties": {
+    "ContainerDefinitions": [
+     {
+      "Environment": [
+       {
+        "Name": "S3_BUCKET",
+        "Value": {
+         "Ref": "ArtifactsBucket2AAC5544"
+        }
+       },
+       {
+        "Name": "DYNAMODB_TABLE",
+        "Value": {
+         "Ref": "JobsTable1970BC16"
+        }
+       },
+       {
+        "Name": "AWS_REGION",
+        "Value": "us-east-1"
+       },
+       {
+        "Name": "BEDROCK_MODEL_PRIMARY",
+        "Value": "amazon.nova-pro-v1:0"
+       },
+       {
+        "Name": "BEDROCK_MODEL_FALLBACK",
+        "Value": "amazon.nova-lite-v1:0"
+       },
+       {
+        "Name": "BEDROCK_MODEL_CODEGEN",
+        "Value": "amazon.nova-pro-v1:0"
+       }
+      ],
+      "Essential": true,
+      "HealthCheck": {
+       "Command": [
+        "CMD-SHELL",
+        "curl -f http://localhost:8000/health || exit 1"
+       ],
+       "Interval": 30,
+       "Retries": 3,
+       "StartPeriod": 60,
+       "Timeout": 5
+      },
+      "Image": {
+       "Fn::Sub": "479752407378.dkr.ecr.us-east-1.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-479752407378-us-east-1:07294ba25ad42a3aa7c8747e0d55f7fd3e6a8d602a33a8a387deb38f3c935417"
+      },
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": {
+         "Ref": "EMIPLogGroupCAFB96F1"
+        },
+        "awslogs-stream-prefix": "backend",
+        "awslogs-region": "us-east-1"
+       }
+      },
+      "Name": "BackendContainer",
+      "PortMappings": [
+       {
+        "ContainerPort": 8000,
+        "Protocol": "tcp"
+       }
+      ]
+     }
+    ],
+    "Cpu": "512",
+    "ExecutionRoleArn": {
+     "Fn::GetAtt": [
+      "ExecutionRole605A040B",
+      "Arn"
+     ]
+    },
+    "Family": "EMIPBackendBackendTaskDefE114935D",
+    "Memory": "1024",
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "TaskRoleArn": {
+     "Fn::GetAtt": [
+      "TaskRole30FC0FBB",
+      "Arn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/BackendTaskDef/Resource"
+   }
+  },
+  "BackendService7A4224EE": {
+   "Type": "AWS::ECS::Service",
+   "Properties": {
+    "Cluster": {
+     "Ref": "EMIPCluster4B5DB87E"
+    },
+    "DeploymentConfiguration": {
+     "Alarms": {
+      "AlarmNames": [],
+      "Enable": false,
+      "Rollback": false
+     },
+     "MaximumPercent": 200,
+     "MinimumHealthyPercent": 50
+    },
+    "DesiredCount": 1,
+    "EnableECSManagedTags": false,
+    "HealthCheckGracePeriodSeconds": 60,
+    "LaunchType": "FARGATE",
+    "LoadBalancers": [
+     {
+      "ContainerName": "BackendContainer",
+      "ContainerPort": 8000,
+      "TargetGroupArn": {
+       "Ref": "EMIPALBListenerBackendTargetGroup540E2407"
+      }
+     }
+    ],
+    "NetworkConfiguration": {
+     "AwsvpcConfiguration": {
+      "AssignPublicIp": "DISABLED",
+      "SecurityGroups": [
+       {
+        "Fn::GetAtt": [
+         "APISecurityGroup03A8566F",
+         "GroupId"
+        ]
+       }
+      ],
+      "Subnets": [
+       {
+        "Ref": "EMIPVpcPrivateSubnet1SubnetD4F65F10"
+       },
+       {
+        "Ref": "EMIPVpcPrivateSubnet2Subnet0A16F895"
+       }
+      ]
+     }
+    },
+    "TaskDefinition": {
+     "Ref": "BackendTaskDef6ECE986E"
+    }
+   },
+   "DependsOn": [
+    "EMIPALBListenerBackendTargetGroup540E2407",
+    "EMIPALBListenerD3D1EEC1",
+    "TaskRoleDefaultPolicy07FC53DE",
+    "TaskRole30FC0FBB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/BackendService/Service"
+   }
+  },
+  "EMIPAPIFBCBAA35": {
+   "Type": "AWS::ApiGateway::RestApi",
+   "Properties": {
+    "BinaryMediaTypes": [
+     "*/*"
+    ],
+    "Description": "Enterprise Modernization Intelligence Platform API",
+    "Name": "EMIP API"
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPAPI/Resource"
+   }
+  },
+  "EMIPAPICloudWatchRole27F8D77C": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "apigateway.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+       ]
+      ]
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPAPI/CloudWatchRole/Resource"
+   }
+  },
+  "EMIPAPIAccountED7B2803": {
+   "Type": "AWS::ApiGateway::Account",
+   "Properties": {
+    "CloudWatchRoleArn": {
+     "Fn::GetAtt": [
+      "EMIPAPICloudWatchRole27F8D77C",
+      "Arn"
+     ]
+    }
+   },
+   "DependsOn": [
+    "EMIPAPIFBCBAA35"
+   ],
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPAPI/Account"
+   }
+  },
+  "EMIPAPIDeployment99674053caa2c555e2908b0318cf18b6c3b2c875": {
+   "Type": "AWS::ApiGateway::Deployment",
+   "Properties": {
+    "Description": "Enterprise Modernization Intelligence Platform API",
+    "RestApiId": {
+     "Ref": "EMIPAPIFBCBAA35"
+    }
+   },
+   "DependsOn": [
+    "EMIPAPIproxyANYEBAC18D3",
+    "EMIPAPIproxyOPTIONSA70C0FB0",
+    "EMIPAPIproxyEF7EFD0D",
+    "EMIPAPIANY4C182313",
+    "EMIPAPIOPTIONS1A172257"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPAPI/Deployment/Resource",
+    "aws:cdk:do-not-refactor": true
+   }
+  },
+  "EMIPAPIDeploymentStageprodCBC65425": {
+   "Type": "AWS::ApiGateway::Stage",
+   "Properties": {
+    "DeploymentId": {
+     "Ref": "EMIPAPIDeployment99674053caa2c555e2908b0318cf18b6c3b2c875"
+    },
+    "RestApiId": {
+     "Ref": "EMIPAPIFBCBAA35"
+    },
+    "StageName": "prod"
+   },
+   "DependsOn": [
+    "EMIPAPIAccountED7B2803"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPAPI/DeploymentStage.prod/Resource"
+   }
+  },
+  "EMIPAPIOPTIONS1A172257": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'*'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Fn::GetAtt": [
+      "EMIPAPIFBCBAA35",
+      "RootResourceId"
+     ]
+    },
+    "RestApiId": {
+     "Ref": "EMIPAPIFBCBAA35"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPAPI/Default/OPTIONS/Resource"
+   }
+  },
+  "EMIPAPIproxyEF7EFD0D": {
+   "Type": "AWS::ApiGateway::Resource",
+   "Properties": {
+    "ParentId": {
+     "Fn::GetAtt": [
+      "EMIPAPIFBCBAA35",
+      "RootResourceId"
+     ]
+    },
+    "PathPart": "{proxy+}",
+    "RestApiId": {
+     "Ref": "EMIPAPIFBCBAA35"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPAPI/Default/{proxy+}/Resource"
+   }
+  },
+  "EMIPAPIproxyOPTIONSA70C0FB0": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "ApiKeyRequired": false,
+    "AuthorizationType": "NONE",
+    "HttpMethod": "OPTIONS",
+    "Integration": {
+     "IntegrationResponses": [
+      {
+       "ResponseParameters": {
+        "method.response.header.Access-Control-Allow-Headers": "'*'",
+        "method.response.header.Access-Control-Allow-Origin": "'*'",
+        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+       },
+       "StatusCode": "204"
+      }
+     ],
+     "RequestTemplates": {
+      "application/json": "{ statusCode: 200 }"
+     },
+     "Type": "MOCK"
+    },
+    "MethodResponses": [
+     {
+      "ResponseParameters": {
+       "method.response.header.Access-Control-Allow-Headers": true,
+       "method.response.header.Access-Control-Allow-Origin": true,
+       "method.response.header.Access-Control-Allow-Methods": true
+      },
+      "StatusCode": "204"
+     }
+    ],
+    "ResourceId": {
+     "Ref": "EMIPAPIproxyEF7EFD0D"
+    },
+    "RestApiId": {
+     "Ref": "EMIPAPIFBCBAA35"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPAPI/Default/{proxy+}/OPTIONS/Resource"
+   }
+  },
+  "EMIPAPIproxyANYEBAC18D3": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "ANY",
+    "Integration": {
+     "ConnectionType": "INTERNET",
+     "IntegrationHttpMethod": "ANY",
+     "RequestParameters": {
+      "integration.request.path.proxy": "method.request.path.proxy"
+     },
+     "Type": "HTTP_PROXY",
+     "Uri": {
+      "Fn::Join": [
+       "",
+       [
+        "http://",
+        {
+         "Fn::GetAtt": [
+          "EMIPALB22ABD82D",
+          "DNSName"
+         ]
+        },
+        "/{proxy}"
+       ]
+      ]
+     }
+    },
+    "RequestParameters": {
+     "method.request.path.proxy": true
+    },
+    "ResourceId": {
+     "Ref": "EMIPAPIproxyEF7EFD0D"
+    },
+    "RestApiId": {
+     "Ref": "EMIPAPIFBCBAA35"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPAPI/Default/{proxy+}/ANY/Resource"
+   }
+  },
+  "EMIPAPIANY4C182313": {
+   "Type": "AWS::ApiGateway::Method",
+   "Properties": {
+    "AuthorizationType": "NONE",
+    "HttpMethod": "ANY",
+    "Integration": {
+     "ConnectionType": "INTERNET",
+     "IntegrationHttpMethod": "GET",
+     "Type": "HTTP_PROXY",
+     "Uri": {
+      "Fn::Join": [
+       "",
+       [
+        "http://",
+        {
+         "Fn::GetAtt": [
+          "EMIPALB22ABD82D",
+          "DNSName"
+         ]
+        }
+       ]
+      ]
+     }
+    },
+    "ResourceId": {
+     "Fn::GetAtt": [
+      "EMIPAPIFBCBAA35",
+      "RootResourceId"
+     ]
+    },
+    "RestApiId": {
+     "Ref": "EMIPAPIFBCBAA35"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/EMIPAPI/Default/ANY/Resource"
+   }
+  },
+  "AnalysisQueue251119DF": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "MessageRetentionPeriod": 86400,
+    "QueueName": "emip-analysis-queue",
+    "VisibilityTimeout": 900
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/AnalysisQueue/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/5VRTW/bMAz9Lc1Z0dB06GG3NOmKAN3qJUUvw1DQCuuysSVPpNIZhv/7IClf7YYBO+nxPZLiIyd6cjnR52fwymOz3oxrKnW/EjAbBa/82POF7q+C2aCo2ZPN6Hs/augX2dGn0WlZzOcLnSTWOXUaxM2xRsG78gWN8Gj4obJUuJpMd+ya4//onQtWAoIN2tR6UOvOQuPWpe7voawxtk9gUGgmun9oTaQeipkqQlmTWYXSZm9HtHRB8FCe+SM3ZXaGQMjZQ3IE14siPl9BbkDwFTpVeNqC4LHxwgp6i4eEPMkumoqAeY5O1ApN8CTdjXehTTP8k7iuPDL/QS9s4qNz1v2sDizoY9YefgZfQXTFmzk+kaW9p/eMswJk0Z9wu9oV+i2ZvKcMB0XQ6H7p8vbSezx1RoOqXcW6v3XVwdEeDwprYCFTO1iXUIM1ZKvtRPfTtq3JpMXfOlhfJS07ehOf5hEL2l3OHp/o9+ArlMMMJ2Hcmn8EZhTWc2c26BcNVPH6KFHTS2wdkzjfXQGjgpaqfEjdL5Fl2lLyf4RTY1ywoubY1q5Lh5492ZNoJVDlVSawRHbBG0ztv6A8u3UUd2iv7j5JeFD8k3X/LWBIfALDoGaBxTV/q3gnFd5taY0+fZmsxlHIVm++uwvSBhlU0cmzsx8u9PlHfXn2wkRjH6xQg3qZ398fTOiQXgQAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "EMIP-Backend/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "EMIPAPIEndpointC25EAE8B": {
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "https://",
+      {
+       "Ref": "EMIPAPIFBCBAA35"
+      },
+      ".execute-api.us-east-1.",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "EMIPAPIDeploymentStageprodCBC65425"
+      },
+      "/"
+     ]
+    ]
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

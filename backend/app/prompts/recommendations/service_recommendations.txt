@@ -1,0 +1,52 @@
+# prompt:recommendations/service_recommendations
+# version: 2.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Generate detailed service extraction recommendations
+
+Based on the structured analysis data below, generate detailed microservice extraction recommendations.
+
+PROJECT: {{project_name}}
+ARCHITECTURE STYLE: {{architecture_style}}
+TOTAL CLASSES: {{total_classes}}
+TOTAL ENDPOINTS: {{total_endpoints}}
+
+CANDIDATE SERVICES (from static analysis):
+{{candidate_services_json}}
+
+BOUNDED CONTEXTS:
+{{bounded_contexts_json}}
+
+DEPENDENCY GRAPH SUMMARY:
+- Total edges: {{dependency_edge_count}}
+- Circular dependencies: {{circular_dep_count}}
+- Highly coupled classes: {{high_coupling_count}}
+
+RISK FINDINGS:
+{{risk_findings_json}}
+
+For EACH recommended service, provide:
+- title: Clear service name
+- description: What this service does (1-2 sentences)
+- category: service_extraction|decomposition|refactoring
+- priority: critical|high|medium|low
+- business_value: Why this matters to the business
+- technical_benefit: What technical problems this solves
+- migration_difficulty: simple|moderate|complex
+- estimated_effort: e.g. "2 engineer-weeks"
+- confidence: 0.0-1.0 (evidence-based)
+- evidence: List of evidence items with source_type, component, detail
+- dependencies: Other services this depends on
+- aws_services_involved: List of AWS services needed
+- expected_cost_impact: Cost description
+- expected_performance_improvement: Performance description
+- explainability: {why, reasoning_chain: {steps, conclusion, confidence_factors}, tradeoffs, alternatives}
+
+CRITICAL RULES:
+1. Only recommend services backed by actual code evidence
+2. Each recommendation must have at least 2 evidence sources
+3. Confidence must reflect actual data availability
+4. Do not hallucinate class names not present in the data
+5. God classes must be decomposed — recommend specific decomposition strategy
+
+Return ONLY valid JSON: {"recommendations": [...]}

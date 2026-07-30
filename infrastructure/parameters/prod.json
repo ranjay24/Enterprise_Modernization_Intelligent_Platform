@@ -1,0 +1,8 @@
+{
+  "Parameters": {
+    "Environment": "prod",
+    "LogLevel": "INFO",
+    "DynamoDBJobsTable": "emip-jobs-prod",
+    "DynamoDBAnalysisTable": "emip-analysis-prod"
+  }
+}

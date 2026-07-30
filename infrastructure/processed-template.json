@@ -1,0 +1,1135 @@
+﻿{
+    "AWSTemplateFormatVersion":  "2010-09-09",
+    "Description":  "EMIP Backend ? FastAPI + Worker Lambdas on SQS/EventBridge",
+    "Parameters":  {
+                       "Environment":  {
+                                           "Type":  "String",
+                                           "Default":  "dev",
+                                           "AllowedValues":  [
+                                                                 "dev",
+                                                                 "staging",
+                                                                 "prod"
+                                                             ],
+                                           "Description":  "Deployment environment"
+                                       },
+                       "LogLevel":  {
+                                        "Type":  "String",
+                                        "Default":  "INFO",
+                                        "AllowedValues":  [
+                                                              "DEBUG",
+                                                              "INFO",
+                                                              "WARNING",
+                                                              "ERROR"
+                                                          ]
+                                    },
+                       "ApiKey":  {
+                                      "Type":  "String",
+                                      "Default":  "",
+                                      "NoEcho":  true,
+                                      "Description":  "API key for authentication (empty = disabled)"
+                                  },
+                       "DynamoDBJobsTable":  {
+                                                 "Type":  "String",
+                                                 "Default":  "emip-jobs-dev"
+                                             },
+                       "DynamoDBAnalysisTable":  {
+                                                     "Type":  "String",
+                                                     "Default":  "emip-analysis-dev"
+                                                 }
+                   },
+    "Outputs":  {
+                    "ApiEndpoint":  {
+                                        "Description":  "API Gateway endpoint URL",
+                                        "Value":  {
+                                                      "Fn::Sub":  "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+                                                  }
+                                    },
+                    "FunctionArn":  {
+                                        "Description":  "Backend Lambda function ARN",
+                                        "Value":  {
+                                                      "Fn::GetAtt":  [
+                                                                         "BackendFunction",
+                                                                         "Arn"
+                                                                     ]
+                                                  }
+                                    },
+                    "WorkerFunctionArn":  {
+                                              "Description":  "Worker Lambda function ARN",
+                                              "Value":  {
+                                                            "Fn::GetAtt":  [
+                                                                               "WorkerFunction",
+                                                                               "Arn"
+                                                                           ]
+                                                        }
+                                          },
+                    "ArtifactsBucketName":  {
+                                                "Description":  "S3 bucket for artifacts",
+                                                "Value":  {
+                                                              "Ref":  "ArtifactsBucket"
+                                                          }
+                                            },
+                    "JobsTableName":  {
+                                          "Description":  "DynamoDB jobs table",
+                                          "Value":  {
+                                                        "Ref":  "JobsTable"
+                                                    }
+                                      },
+                    "AnalysisTableName":  {
+                                              "Description":  "DynamoDB analysis table",
+                                              "Value":  {
+                                                            "Ref":  "AnalysisTable"
+                                                        }
+                                          },
+                    "AnalysisQueueUrl":  {
+                                             "Description":  "SQS analysis queue URL",
+                                             "Value":  {
+                                                           "Ref":  "AnalysisQueue"
+                                                       }
+                                         },
+                    "AnalysisDLQUrl":  {
+                                           "Description":  "SQS analysis dead letter queue URL",
+                                           "Value":  {
+                                                         "Ref":  "AnalysisDLQ"
+                                                     }
+                                       },
+                    "EventsBusName":  {
+                                          "Description":  "EventBridge bus name",
+                                          "Value":  {
+                                                        "Ref":  "EventsBus"
+                                                    }
+                                      },
+                    "NotificationTopicArn":  {
+                                                 "Description":  "SNS notification topic ARN",
+                                                 "Value":  {
+                                                               "Ref":  "NotificationTopic"
+                                                           }
+                                             }
+                },
+    "Resources":  {
+                      "ApiGateway":  {
+                                         "Type":  "AWS::ApiGateway::RestApi",
+                                         "Metadata":  {
+                                                          "SamResourceId":  "ApiGateway"
+                                                      },
+                                         "Properties":  {
+                                                            "Body":  {
+                                                                         "info":  {
+                                                                                      "version":  "1.0",
+                                                                                      "title":  {
+                                                                                                    "Ref":  "AWS::StackName"
+                                                                                                }
+                                                                                  },
+                                                                         "paths":  {
+                                                                                       "/{proxy+}":  {
+                                                                                                         "options":  {
+                                                                                                                         "x-amazon-apigateway-integration":  {
+                                                                                                                                                                 "type":  "mock",
+                                                                                                                                                                 "requestTemplates":  {
+                                                                                                                                                                                          "application/json":  "{\n  \"statusCode\" : 200\n}\n"
+                                                                                                                                                                                      },
+                                                                                                                                                                 "responses":  {
+                                                                                                                                                                                   "default":  {
+                                                                                                                                                                                                   "statusCode":  "200",
+                                                                                                                                                                                                   "responseTemplates":  {
+                                                                                                                                                                                                                             "application/json":  "{}\n"
+                                                                                                                                                                                                                         },
+                                                                                                                                                                                                   "responseParameters":  {
+                                                                                                                                                                                                                              "method.response.header.Access-Control-Allow-Origin":  "\u0027*\u0027",
+                                                                                                                                                                                                                              "method.response.header.Access-Control-Allow-Methods":  "\u0027*\u0027",
+                                                                                                                                                                                                                              "method.response.header.Access-Control-Allow-Headers":  "\u0027*\u0027"
+                                                                                                                                                                                                                          }
+                                                                                                                                                                                               }
+                                                                                                                                                                               }
+                                                                                                                                                             },
+                                                                                                                         "consumes":  [
+                                                                                                                                          "application/json"
+                                                                                                                                      ],
+                                                                                                                         "summary":  "CORS support",
+                                                                                                                         "responses":  {
+                                                                                                                                           "200":  {
+                                                                                                                                                       "headers":  {
+                                                                                                                                                                       "Access-Control-Allow-Origin":  {
+                                                                                                                                                                                                           "type":  "string"
+                                                                                                                                                                                                       },
+                                                                                                                                                                       "Access-Control-Allow-Headers":  {
+                                                                                                                                                                                                            "type":  "string"
+                                                                                                                                                                                                        },
+                                                                                                                                                                       "Access-Control-Allow-Methods":  {
+                                                                                                                                                                                                            "type":  "string"
+                                                                                                                                                                                                        }
+                                                                                                                                                                   },
+                                                                                                                                                       "description":  "Default response for CORS method"
+                                                                                                                                                   }
+                                                                                                                                       },
+                                                                                                                         "produces":  [
+                                                                                                                                          "application/json"
+                                                                                                                                      ]
+                                                                                                                     },
+                                                                                                         "x-amazon-apigateway-any-method":  {
+                                                                                                                                                "x-amazon-apigateway-integration":  {
+                                                                                                                                                                                        "httpMethod":  "POST",
+                                                                                                                                                                                        "type":  "aws_proxy",
+                                                                                                                                                                                        "uri":  {
+                                                                                                                                                                                                    "Fn::Sub":  "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BackendFunction.Arn}/invocations"
+                                                                                                                                                                                                }
+                                                                                                                                                                                    },
+                                                                                                                                                "responses":  {
+
+                                                                                                                                                              }
+                                                                                                                                            }
+                                                                                                     },
+                                                                                       "/":  {
+                                                                                                 "options":  {
+                                                                                                                 "x-amazon-apigateway-integration":  {
+                                                                                                                                                         "type":  "mock",
+                                                                                                                                                         "requestTemplates":  {
+                                                                                                                                                                                  "application/json":  "{\n  \"statusCode\" : 200\n}\n"
+                                                                                                                                                                              },
+                                                                                                                                                         "responses":  {
+                                                                                                                                                                           "default":  {
+                                                                                                                                                                                           "statusCode":  "200",
+                                                                                                                                                                                           "responseTemplates":  {
+                                                                                                                                                                                                                     "application/json":  "{}\n"
+                                                                                                                                                                                                                 },
+                                                                                                                                                                                           "responseParameters":  {
+                                                                                                                                                                                                                      "method.response.header.Access-Control-Allow-Origin":  "\u0027*\u0027",
+                                                                                                                                                                                                                      "method.response.header.Access-Control-Allow-Methods":  "\u0027*\u0027",
+                                                                                                                                                                                                                      "method.response.header.Access-Control-Allow-Headers":  "\u0027*\u0027"
+                                                                                                                                                                                                                  }
+                                                                                                                                                                                       }
+                                                                                                                                                                       }
+                                                                                                                                                     },
+                                                                                                                 "consumes":  [
+                                                                                                                                  "application/json"
+                                                                                                                              ],
+                                                                                                                 "summary":  "CORS support",
+                                                                                                                 "responses":  {
+                                                                                                                                   "200":  {
+                                                                                                                                               "headers":  {
+                                                                                                                                                               "Access-Control-Allow-Origin":  {
+                                                                                                                                                                                                   "type":  "string"
+                                                                                                                                                                                               },
+                                                                                                                                                               "Access-Control-Allow-Headers":  {
+                                                                                                                                                                                                    "type":  "string"
+                                                                                                                                                                                                },
+                                                                                                                                                               "Access-Control-Allow-Methods":  {
+                                                                                                                                                                                                    "type":  "string"
+                                                                                                                                                                                                }
+                                                                                                                                                           },
+                                                                                                                                               "description":  "Default response for CORS method"
+                                                                                                                                           }
+                                                                                                                               },
+                                                                                                                 "produces":  [
+                                                                                                                                  "application/json"
+                                                                                                                              ]
+                                                                                                             },
+                                                                                                 "x-amazon-apigateway-any-method":  {
+                                                                                                                                        "x-amazon-apigateway-integration":  {
+                                                                                                                                                                                "httpMethod":  "POST",
+                                                                                                                                                                                "type":  "aws_proxy",
+                                                                                                                                                                                "uri":  {
+                                                                                                                                                                                            "Fn::Sub":  "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BackendFunction.Arn}/invocations"
+                                                                                                                                                                                        }
+                                                                                                                                                                            },
+                                                                                                                                        "responses":  {
+
+                                                                                                                                                      }
+                                                                                                                                    }
+                                                                                             }
+                                                                                   },
+                                                                         "swagger":  "2.0",
+                                                                         "x-amazon-apigateway-binary-media-types":  [
+                                                                                                                        "*/*"
+                                                                                                                    ]
+                                                                     },
+                                                            "Name":  {
+                                                                         "Fn::Sub":  "emip-api-${Environment}"
+                                                                     },
+                                                            "BinaryMediaTypes":  [
+                                                                                     "*/*"
+                                                                                 ]
+                                                        }
+                                     },
+                      "BackendLogGroup":  {
+                                              "Type":  "AWS::Logs::LogGroup",
+                                              "Properties":  {
+                                                                 "LogGroupName":  "/emip/backend",
+                                                                 "RetentionInDays":  30
+                                                             },
+                                              "Metadata":  {
+                                                               "SamResourceId":  "BackendLogGroup"
+                                                           }
+                                          },
+                      "BackendFunctionRole":  {
+                                                  "Type":  "AWS::IAM::Role",
+                                                  "Properties":  {
+                                                                     "AssumeRolePolicyDocument":  {
+                                                                                                      "Version":  "2012-10-17",
+                                                                                                      "Statement":  [
+                                                                                                                        {
+                                                                                                                            "Action":  [
+                                                                                                                                           "sts:AssumeRole"
+                                                                                                                                       ],
+                                                                                                                            "Effect":  "Allow",
+                                                                                                                            "Principal":  {
+                                                                                                                                              "Service":  [
+                                                                                                                                                              "lambda.amazonaws.com"
+                                                                                                                                                          ]
+                                                                                                                                          }
+                                                                                                                        }
+                                                                                                                    ]
+                                                                                                  },
+                                                                     "ManagedPolicyArns":  [
+                                                                                               "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                                                                                               "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+                                                                                           ],
+                                                                     "Policies":  [
+                                                                                      {
+                                                                                          "PolicyName":  "BackendFunctionRolePolicy0",
+                                                                                          "PolicyDocument":  {
+                                                                                                                 "Statement":  [
+                                                                                                                                   {
+                                                                                                                                       "Effect":  "Allow",
+                                                                                                                                       "Action":  [
+                                                                                                                                                      "s3:GetObject",
+                                                                                                                                                      "s3:PutObject",
+                                                                                                                                                      "s3:DeleteObject",
+                                                                                                                                                      "s3:ListBucket"
+                                                                                                                                                  ],
+                                                                                                                                       "Resource":  [
+                                                                                                                                                        {
+                                                                                                                                                            "Fn::Sub":  "arn:${AWS::Partition}:s3:::${ArtifactsBucket}"
+                                                                                                                                                        },
+                                                                                                                                                        {
+                                                                                                                                                            "Fn::Sub":  "arn:${AWS::Partition}:s3:::${ArtifactsBucket}/*"
+                                                                                                                                                        }
+                                                                                                                                                    ]
+                                                                                                                                   }
+                                                                                                                               ]
+                                                                                                             }
+                                                                                      },
+                                                                                      {
+                                                                                          "PolicyName":  "BackendFunctionRolePolicy1",
+                                                                                          "PolicyDocument":  {
+                                                                                                                 "Statement":  [
+                                                                                                                                   {
+                                                                                                                                       "Effect":  "Allow",
+                                                                                                                                       "Action":  [
+                                                                                                                                                      "dynamodb:GetItem",
+                                                                                                                                                      "dynamodb:PutItem",
+                                                                                                                                                      "dynamodb:UpdateItem",
+                                                                                                                                                      "dynamodb:DeleteItem",
+                                                                                                                                                      "dynamodb:Query",
+                                                                                                                                                      "dynamodb:Scan"
+                                                                                                                                                  ],
+                                                                                                                                       "Resource":  [
+                                                                                                                                                        {
+                                                                                                                                                            "Fn::Sub":  "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${JobsTable}"
+                                                                                                                                                        },
+                                                                                                                                                        {
+                                                                                                                                                            "Fn::Sub":  "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${JobsTable}/index/*"
+                                                                                                                                                        }
+                                                                                                                                                    ]
+                                                                                                                                   }
+                                                                                                                               ]
+                                                                                                             }
+                                                                                      },
+                                                                                      {
+                                                                                          "PolicyName":  "BackendFunctionRolePolicy2",
+                                                                                          "PolicyDocument":  {
+                                                                                                                 "Statement":  [
+                                                                                                                                   {
+                                                                                                                                       "Effect":  "Allow",
+                                                                                                                                       "Action":  [
+                                                                                                                                                      "dynamodb:GetItem",
+                                                                                                                                                      "dynamodb:PutItem",
+                                                                                                                                                      "dynamodb:UpdateItem",
+                                                                                                                                                      "dynamodb:DeleteItem",
+                                                                                                                                                      "dynamodb:Query",
+                                                                                                                                                      "dynamodb:Scan"
+                                                                                                                                                  ],
+                                                                                                                                       "Resource":  [
+                                                                                                                                                        {
+                                                                                                                                                            "Fn::Sub":  "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AnalysisTable}"
+                                                                                                                                                        },
+                                                                                                                                                        {
+                                                                                                                                                            "Fn::Sub":  "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AnalysisTable}/index/*"
+                                                                                                                                                        }
+                                                                                                                                                    ]
+                                                                                                                                   }
+                                                                                                                               ]
+                                                                                                             }
+                                                                                      },
+                                                                                      {
+                                                                                          "PolicyName":  "BackendFunctionRolePolicy3",
+                                                                                          "PolicyDocument":  {
+                                                                                                                 "Statement":  [
+                                                                                                                                   {
+                                                                                                                                       "Effect":  "Allow",
+                                                                                                                                       "Action":  [
+                                                                                                                                                      "sqs:SendMessage"
+                                                                                                                                                  ],
+                                                                                                                                       "Resource":  {
+                                                                                                                                                        "Fn::GetAtt":  [
+                                                                                                                                                                           "AnalysisQueue",
+                                                                                                                                                                           "Arn"
+                                                                                                                                                                       ]
+                                                                                                                                                    }
+                                                                                                                                   }
+                                                                                                                               ]
+                                                                                                             }
+                                                                                      },
+                                                                                      {
+                                                                                          "PolicyName":  "BackendFunctionRolePolicy4",
+                                                                                          "PolicyDocument":  {
+                                                                                                                 "Statement":  [
+                                                                                                                                   {
+                                                                                                                                       "Effect":  "Allow",
+                                                                                                                                       "Action":  [
+                                                                                                                                                      "cloudwatch:PutMetricData"
+                                                                                                                                                  ],
+                                                                                                                                       "Resource":  "*"
+                                                                                                                                   }
+                                                                                                                               ]
+                                                                                                             }
+                                                                                      },
+                                                                                      {
+                                                                                          "PolicyName":  "BackendFunctionRolePolicy5",
+                                                                                          "PolicyDocument":  {
+                                                                                                                 "Statement":  [
+                                                                                                                                   {
+                                                                                                                                       "Effect":  "Allow",
+                                                                                                                                       "Action":  [
+                                                                                                                                                      "bedrock:Converse"
+                                                                                                                                                  ],
+                                                                                                                                       "Resource":  "*"
+                                                                                                                                   }
+                                                                                                                               ]
+                                                                                                             }
+                                                                                      },
+                                                                                      {
+                                                                                          "PolicyName":  "BackendFunctionRolePolicy6",
+                                                                                          "PolicyDocument":  {
+                                                                                                                 "Statement":  [
+                                                                                                                                   {
+                                                                                                                                       "Effect":  "Allow",
+                                                                                                                                       "Action":  [
+                                                                                                                                                      "sns:Publish"
+                                                                                                                                                  ],
+                                                                                                                                       "Resource":  {
+                                                                                                                                                        "Ref":  "NotificationTopic"
+                                                                                                                                                    }
+                                                                                                                                   }
+                                                                                                                               ]
+                                                                                                             }
+                                                                                      },
+                                                                                      {
+                                                                                          "PolicyName":  "BackendFunctionRolePolicy7",
+                                                                                          "PolicyDocument":  {
+                                                                                                                 "Statement":  [
+                                                                                                                                   {
+                                                                                                                                       "Effect":  "Allow",
+                                                                                                                                       "Action":  [
+                                                                                                                                                      "events:PutEvents"
+                                                                                                                                                  ],
+                                                                                                                                       "Resource":  {
+                                                                                                                                                        "Fn::GetAtt":  [
+                                                                                                                                                                           "EventsBus",
+                                                                                                                                                                           "Arn"
+                                                                                                                                                                       ]
+                                                                                                                                                    }
+                                                                                                                                   }
+                                                                                                                               ]
+                                                                                                             }
+                                                                                      },
+                                                                                      {
+                                                                                          "PolicyName":  "BackendFunctionRolePolicy8",
+                                                                                          "PolicyDocument":  {
+                                                                                                                 "Statement":  [
+                                                                                                                                   {
+                                                                                                                                       "Effect":  "Allow",
+                                                                                                                                       "Action":  [
+                                                                                                                                                      "xray:PutTraceSegments",
+                                                                                                                                                      "xray:PutTelemetryRecords"
+                                                                                                                                                  ],
+                                                                                                                                       "Resource":  "*"
+                                                                                                                                   }
+                                                                                                                               ]
+                                                                                                             }
+                                                                                      }
+                                                                                  ],
+                                                                     "Tags":  [
+                                                                                  {
+                                                                                      "Key":  "lambda:createdBy",
+                                                                                      "Value":  "SAM"
+                                                                                  }
+                                                                              ]
+                                                                 }
+                                              },
+                      "WorkerFunctionRole":  {
+                                                 "Type":  "AWS::IAM::Role",
+                                                 "Properties":  {
+                                                                    "AssumeRolePolicyDocument":  {
+                                                                                                     "Version":  "2012-10-17",
+                                                                                                     "Statement":  [
+                                                                                                                       {
+                                                                                                                           "Action":  [
+                                                                                                                                          "sts:AssumeRole"
+                                                                                                                                      ],
+                                                                                                                           "Effect":  "Allow",
+                                                                                                                           "Principal":  {
+                                                                                                                                             "Service":  [
+                                                                                                                                                             "lambda.amazonaws.com"
+                                                                                                                                                         ]
+                                                                                                                                         }
+                                                                                                                       }
+                                                                                                                   ]
+                                                                                                 },
+                                                                    "ManagedPolicyArns":  [
+                                                                                              "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                                                                                              "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess",
+                                                                                              "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
+                                                                                          ],
+                                                                    "Policies":  [
+                                                                                     {
+                                                                                         "PolicyName":  "WorkerFunctionRolePolicy0",
+                                                                                         "PolicyDocument":  {
+                                                                                                                "Statement":  [
+                                                                                                                                  {
+                                                                                                                                      "Effect":  "Allow",
+                                                                                                                                      "Action":  [
+                                                                                                                                                     "s3:GetObject",
+                                                                                                                                                     "s3:PutObject",
+                                                                                                                                                     "s3:DeleteObject",
+                                                                                                                                                     "s3:ListBucket"
+                                                                                                                                                 ],
+                                                                                                                                      "Resource":  [
+                                                                                                                                                       {
+                                                                                                                                                           "Fn::Sub":  "arn:${AWS::Partition}:s3:::${ArtifactsBucket}"
+                                                                                                                                                       },
+                                                                                                                                                       {
+                                                                                                                                                           "Fn::Sub":  "arn:${AWS::Partition}:s3:::${ArtifactsBucket}/*"
+                                                                                                                                                       }
+                                                                                                                                                   ]
+                                                                                                                                  }
+                                                                                                                              ]
+                                                                                                            }
+                                                                                     },
+                                                                                     {
+                                                                                         "PolicyName":  "WorkerFunctionRolePolicy1",
+                                                                                         "PolicyDocument":  {
+                                                                                                                "Statement":  [
+                                                                                                                                  {
+                                                                                                                                      "Effect":  "Allow",
+                                                                                                                                      "Action":  [
+                                                                                                                                                     "dynamodb:GetItem",
+                                                                                                                                                     "dynamodb:PutItem",
+                                                                                                                                                     "dynamodb:UpdateItem",
+                                                                                                                                                     "dynamodb:DeleteItem",
+                                                                                                                                                     "dynamodb:Query",
+                                                                                                                                                     "dynamodb:Scan"
+                                                                                                                                                 ],
+                                                                                                                                      "Resource":  [
+                                                                                                                                                       {
+                                                                                                                                                           "Fn::Sub":  "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${JobsTable}"
+                                                                                                                                                       },
+                                                                                                                                                       {
+                                                                                                                                                           "Fn::Sub":  "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${JobsTable}/index/*"
+                                                                                                                                                       }
+                                                                                                                                                   ]
+                                                                                                                                  }
+                                                                                                                              ]
+                                                                                                            }
+                                                                                     },
+                                                                                     {
+                                                                                         "PolicyName":  "WorkerFunctionRolePolicy2",
+                                                                                         "PolicyDocument":  {
+                                                                                                                "Statement":  [
+                                                                                                                                  {
+                                                                                                                                      "Effect":  "Allow",
+                                                                                                                                      "Action":  [
+                                                                                                                                                     "dynamodb:GetItem",
+                                                                                                                                                     "dynamodb:PutItem",
+                                                                                                                                                     "dynamodb:UpdateItem",
+                                                                                                                                                     "dynamodb:DeleteItem",
+                                                                                                                                                     "dynamodb:Query",
+                                                                                                                                                     "dynamodb:Scan"
+                                                                                                                                                 ],
+                                                                                                                                      "Resource":  [
+                                                                                                                                                       {
+                                                                                                                                                           "Fn::Sub":  "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AnalysisTable}"
+                                                                                                                                                       },
+                                                                                                                                                       {
+                                                                                                                                                           "Fn::Sub":  "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AnalysisTable}/index/*"
+                                                                                                                                                       }
+                                                                                                                                                   ]
+                                                                                                                                  }
+                                                                                                                              ]
+                                                                                                            }
+                                                                                     },
+                                                                                     {
+                                                                                         "PolicyName":  "WorkerFunctionRolePolicy3",
+                                                                                         "PolicyDocument":  {
+                                                                                                                "Statement":  [
+                                                                                                                                  {
+                                                                                                                                      "Effect":  "Allow",
+                                                                                                                                      "Action":  [
+                                                                                                                                                     "sqs:ReceiveMessage",
+                                                                                                                                                     "sqs:DeleteMessage",
+                                                                                                                                                     "sqs:GetQueueAttributes"
+                                                                                                                                                 ],
+                                                                                                                                      "Resource":  {
+                                                                                                                                                       "Fn::GetAtt":  [
+                                                                                                                                                                          "AnalysisQueue",
+                                                                                                                                                                          "Arn"
+                                                                                                                                                                      ]
+                                                                                                                                                   }
+                                                                                                                                  }
+                                                                                                                              ]
+                                                                                                            }
+                                                                                     },
+                                                                                     {
+                                                                                         "PolicyName":  "WorkerFunctionRolePolicy4",
+                                                                                         "PolicyDocument":  {
+                                                                                                                "Statement":  [
+                                                                                                                                  {
+                                                                                                                                      "Effect":  "Allow",
+                                                                                                                                      "Action":  [
+                                                                                                                                                     "sqs:SendMessage"
+                                                                                                                                                 ],
+                                                                                                                                      "Resource":  {
+                                                                                                                                                       "Fn::GetAtt":  [
+                                                                                                                                                                          "AnalysisDLQ",
+                                                                                                                                                                          "Arn"
+                                                                                                                                                                      ]
+                                                                                                                                                   }
+                                                                                                                                  }
+                                                                                                                              ]
+                                                                                                            }
+                                                                                     },
+                                                                                     {
+                                                                                         "PolicyName":  "WorkerFunctionRolePolicy5",
+                                                                                         "PolicyDocument":  {
+                                                                                                                "Statement":  [
+                                                                                                                                  {
+                                                                                                                                      "Effect":  "Allow",
+                                                                                                                                      "Action":  [
+                                                                                                                                                     "cloudwatch:PutMetricData"
+                                                                                                                                                 ],
+                                                                                                                                      "Resource":  "*"
+                                                                                                                                  }
+                                                                                                                              ]
+                                                                                                            }
+                                                                                     },
+                                                                                     {
+                                                                                         "PolicyName":  "WorkerFunctionRolePolicy6",
+                                                                                         "PolicyDocument":  {
+                                                                                                                "Statement":  [
+                                                                                                                                  {
+                                                                                                                                      "Effect":  "Allow",
+                                                                                                                                      "Action":  [
+                                                                                                                                                     "bedrock:Converse"
+                                                                                                                                                 ],
+                                                                                                                                      "Resource":  "*"
+                                                                                                                                  }
+                                                                                                                              ]
+                                                                                                            }
+                                                                                     },
+                                                                                     {
+                                                                                         "PolicyName":  "WorkerFunctionRolePolicy7",
+                                                                                         "PolicyDocument":  {
+                                                                                                                "Statement":  [
+                                                                                                                                  {
+                                                                                                                                      "Effect":  "Allow",
+                                                                                                                                      "Action":  [
+                                                                                                                                                     "sns:Publish"
+                                                                                                                                                 ],
+                                                                                                                                      "Resource":  {
+                                                                                                                                                       "Ref":  "NotificationTopic"
+                                                                                                                                                   }
+                                                                                                                                  }
+                                                                                                                              ]
+                                                                                                            }
+                                                                                     },
+                                                                                     {
+                                                                                         "PolicyName":  "WorkerFunctionRolePolicy8",
+                                                                                         "PolicyDocument":  {
+                                                                                                                "Statement":  [
+                                                                                                                                  {
+                                                                                                                                      "Effect":  "Allow",
+                                                                                                                                      "Action":  [
+                                                                                                                                                     "events:PutEvents"
+                                                                                                                                                 ],
+                                                                                                                                      "Resource":  {
+                                                                                                                                                       "Fn::GetAtt":  [
+                                                                                                                                                                          "EventsBus",
+                                                                                                                                                                          "Arn"
+                                                                                                                                                                      ]
+                                                                                                                                                   }
+                                                                                                                                  }
+                                                                                                                              ]
+                                                                                                            }
+                                                                                     },
+                                                                                     {
+                                                                                         "PolicyName":  "WorkerFunctionRolePolicy9",
+                                                                                         "PolicyDocument":  {
+                                                                                                                "Statement":  [
+                                                                                                                                  {
+                                                                                                                                      "Effect":  "Allow",
+                                                                                                                                      "Action":  [
+                                                                                                                                                     "xray:PutTraceSegments",
+                                                                                                                                                     "xray:PutTelemetryRecords"
+                                                                                                                                                 ],
+                                                                                                                                      "Resource":  "*"
+                                                                                                                                  }
+                                                                                                                              ]
+                                                                                                            }
+                                                                                     }
+                                                                                 ],
+                                                                    "Tags":  [
+                                                                                 {
+                                                                                     "Key":  "lambda:createdBy",
+                                                                                     "Value":  "SAM"
+                                                                                 }
+                                                                             ]
+                                                                }
+                                             },
+                      "ApiGatewayDeploymenta88ee9e69e":  {
+                                                             "Type":  "AWS::ApiGateway::Deployment",
+                                                             "Properties":  {
+                                                                                "Description":  "RestApi deployment id: a88ee9e69e113231acaa621e70446d6185b8ee98",
+                                                                                "RestApiId":  {
+                                                                                                  "Ref":  "ApiGateway"
+                                                                                              },
+                                                                                "StageName":  "Stage"
+                                                                            }
+                                                         },
+                      "ApiGatewayStage":  {
+                                              "Type":  "AWS::ApiGateway::Stage",
+                                              "Properties":  {
+                                                                 "DeploymentId":  {
+                                                                                      "Ref":  "ApiGatewayDeploymenta88ee9e69e"
+                                                                                  },
+                                                                 "RestApiId":  {
+                                                                                   "Ref":  "ApiGateway"
+                                                                               },
+                                                                 "StageName":  {
+                                                                                   "Ref":  "Environment"
+                                                                               },
+                                                                 "TracingEnabled":  true,
+                                                                 "MethodSettings":  [
+                                                                                        {
+                                                                                            "HttpMethod":  "*",
+                                                                                            "MetricsEnabled":  true,
+                                                                                            "ResourcePath":  "/*",
+                                                                                            "DataTraceEnabled":  false,
+                                                                                            "LoggingLevel":  "INFO"
+                                                                                        }
+                                                                                    ]
+                                                             }
+                                          },
+                      "ArtifactsBucket":  {
+                                              "Type":  "AWS::S3::Bucket",
+                                              "DeletionPolicy":  "Retain",
+                                              "UpdateReplacePolicy":  "Retain",
+                                              "Properties":  {
+                                                                 "BucketName":  {
+                                                                                    "Fn::Sub":  "emip-artifacts-${Environment}-${AWS::AccountId}"
+                                                                                },
+                                                                 "VersioningConfiguration":  {
+                                                                                                 "Status":  "Enabled"
+                                                                                             },
+                                                                 "BucketEncryption":  {
+                                                                                          "ServerSideEncryptionConfiguration":  [
+                                                                                                                                    {
+                                                                                                                                        "ServerSideEncryptionByDefault":  {
+                                                                                                                                                                              "SSEAlgorithm":  "AES256"
+                                                                                                                                                                          }
+                                                                                                                                    }
+                                                                                                                                ]
+                                                                                      },
+                                                                 "LifecycleConfiguration":  {
+                                                                                                "Rules":  [
+                                                                                                              {
+                                                                                                                  "Id":  "CleanupOldAnalysis",
+                                                                                                                  "Status":  "Enabled",
+                                                                                                                  "Transitions":  [
+                                                                                                                                      {
+                                                                                                                                          "TransitionInDays":  30,
+                                                                                                                                          "StorageClass":  "GLACIER"
+                                                                                                                                      }
+                                                                                                                                  ]
+                                                                                                              }
+                                                                                                          ]
+                                                                                            }
+                                                             },
+                                              "Metadata":  {
+                                                               "SamResourceId":  "ArtifactsBucket"
+                                                           }
+                                          },
+                      "BackendFunctionApiEventPermissionStage":  {
+                                                                     "Type":  "AWS::Lambda::Permission",
+                                                                     "Properties":  {
+                                                                                        "Action":  "lambda:InvokeFunction",
+                                                                                        "FunctionName":  {
+                                                                                                             "Ref":  "BackendFunction"
+                                                                                                         },
+                                                                                        "Principal":  "apigateway.amazonaws.com",
+                                                                                        "SourceArn":  {
+                                                                                                          "Fn::Sub":  [
+                                                                                                                          "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/*/*",
+                                                                                                                          {
+                                                                                                                              "__ApiId__":  {
+                                                                                                                                                "Ref":  "ApiGateway"
+                                                                                                                                            },
+                                                                                                                              "__Stage__":  "*"
+                                                                                                                          }
+                                                                                                                      ]
+                                                                                                      }
+                                                                                    }
+                                                                 },
+                      "BackendFunction":  {
+                                              "Type":  "AWS::Lambda::Function",
+                                              "Metadata":  {
+                                                               "SamResourceId":  "BackendFunction"
+                                                           },
+                                              "Properties":  {
+                                                                 "Code":  {
+                                                                              "S3Bucket":  "aws-sam-cli-managed-default-samclisourcebucket-vsdazhrg2kjh",
+                                                                              "S3Key":  "9467114dfd66cecce5234f24ca77158b"
+                                                                          },
+                                                                 "Description":  "EMIP backend API",
+                                                                 "FunctionName":  {
+                                                                                      "Fn::Sub":  "emip-backend-${Environment}"
+                                                                                  },
+                                                                 "Handler":  "handler.handler",
+                                                                 "MemorySize":  1024,
+                                                                 "Role":  {
+                                                                              "Fn::GetAtt":  [
+                                                                                                 "BackendFunctionRole",
+                                                                                                 "Arn"
+                                                                                             ]
+                                                                          },
+                                                                 "Runtime":  "python3.14",
+                                                                 "Timeout":  120,
+                                                                 "Environment":  {
+                                                                                     "Variables":  {
+                                                                                                       "ENVIRONMENT":  {
+                                                                                                                           "Ref":  "Environment"
+                                                                                                                       },
+                                                                                                       "LOG_LEVEL":  {
+                                                                                                                         "Ref":  "LogLevel"
+                                                                                                                     },
+                                                                                                       "S3_BUCKET":  {
+                                                                                                                         "Ref":  "ArtifactsBucket"
+                                                                                                                     },
+                                                                                                       "DYNAMODB_JOBS_TABLE":  {
+                                                                                                                                   "Ref":  "JobsTable"
+                                                                                                                               },
+                                                                                                       "DYNAMODB_ANALYSIS_TABLE":  {
+                                                                                                                                       "Ref":  "AnalysisTable"
+                                                                                                                                   },
+                                                                                                       "BEDROCK_MODEL_PRIMARY":  "amazon.nova-pro-v1:0",
+                                                                                                       "BEDROCK_MODEL_FALLBACK":  "amazon.nova-lite-v1:0",
+                                                                                                       "BEDROCK_MODEL_CODEGEN":  "amazon.nova-pro-v1:0",
+                                                                                                       "SQS_ANALYSIS_QUEUE":  {
+                                                                                                                                  "Ref":  "AnalysisQueue"
+                                                                                                                              },
+                                                                                                       "SQS_ANALYSIS_DLQ":  {
+                                                                                                                                "Ref":  "AnalysisDLQ"
+                                                                                                                            },
+                                                                                                       "SNS_NOTIFICATION_TOPIC":  {
+                                                                                                                                      "Ref":  "NotificationTopic"
+                                                                                                                                  },
+                                                                                                       "EVENTBRIDGE_BUS_NAME":  {
+                                                                                                                                    "Ref":  "EventsBus"
+                                                                                                                                },
+                                                                                                       "CHECKPOINT_ENABLED":  "true",
+                                                                                                       "ARTIFACT_VERSION":  "1.0.0",
+                                                                                                       "CORS_ORIGINS":  "*"
+                                                                                                   }
+                                                                                 },
+                                                                 "Tags":  [
+                                                                              {
+                                                                                  "Key":  "lambda:createdBy",
+                                                                                  "Value":  "SAM"
+                                                                              }
+                                                                          ],
+                                                                 "TracingConfig":  {
+                                                                                       "Mode":  "Active"
+                                                                                   },
+                                                                 "Layers":  [
+                                                                                {
+                                                                                    "Ref":  "DependenciesLayereef5916efd"
+                                                                                }
+                                                                            ],
+                                                                 "ReservedConcurrentExecutions":  50,
+                                                                 "Architectures":  [
+                                                                                       "x86_64"
+                                                                                   ]
+                                                             }
+                                          },
+                      "AnalysisDLQ":  {
+                                          "Type":  "AWS::SQS::Queue",
+                                          "Properties":  {
+                                                             "QueueName":  {
+                                                                               "Fn::Sub":  "emip-analysis-dlq-${Environment}"
+                                                                           },
+                                                             "MessageRetentionPeriod":  1209600,
+                                                             "KmsMasterKeyId":  "alias/aws/sqs"
+                                                         },
+                                          "Metadata":  {
+                                                           "SamResourceId":  "AnalysisDLQ"
+                                                       }
+                                      },
+                      "WorkerLogGroup":  {
+                                             "Type":  "AWS::Logs::LogGroup",
+                                             "Properties":  {
+                                                                "LogGroupName":  "/emip/worker",
+                                                                "RetentionInDays":  30
+                                                            },
+                                             "Metadata":  {
+                                                              "SamResourceId":  "WorkerLogGroup"
+                                                          }
+                                         },
+                      "JobsTable":  {
+                                        "Type":  "AWS::DynamoDB::Table",
+                                        "DeletionPolicy":  "Retain",
+                                        "UpdateReplacePolicy":  "Retain",
+                                        "Properties":  {
+                                                           "TableName":  {
+                                                                             "Ref":  "DynamoDBJobsTable"
+                                                                         },
+                                                           "BillingMode":  "PAY_PER_REQUEST",
+                                                           "AttributeDefinitions":  [
+                                                                                        {
+                                                                                            "AttributeName":  "job_id",
+                                                                                            "AttributeType":  "S"
+                                                                                        }
+                                                                                    ],
+                                                           "KeySchema":  [
+                                                                             {
+                                                                                 "AttributeName":  "job_id",
+                                                                                 "KeyType":  "HASH"
+                                                                             }
+                                                                         ]
+                                                       },
+                                        "Metadata":  {
+                                                         "SamResourceId":  "JobsTable"
+                                                     }
+                                    },
+                      "BackendFunctionRootEventPermissionStage":  {
+                                                                      "Type":  "AWS::Lambda::Permission",
+                                                                      "Properties":  {
+                                                                                         "Action":  "lambda:InvokeFunction",
+                                                                                         "FunctionName":  {
+                                                                                                              "Ref":  "BackendFunction"
+                                                                                                          },
+                                                                                         "Principal":  "apigateway.amazonaws.com",
+                                                                                         "SourceArn":  {
+                                                                                                           "Fn::Sub":  [
+                                                                                                                           "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${__ApiId__}/${__Stage__}/*/",
+                                                                                                                           {
+                                                                                                                               "__ApiId__":  {
+                                                                                                                                                 "Ref":  "ApiGateway"
+                                                                                                                                             },
+                                                                                                                               "__Stage__":  "*"
+                                                                                                                           }
+                                                                                                                       ]
+                                                                                                       }
+                                                                                     }
+                                                                  },
+                      "NotificationTopic":  {
+                                                "Type":  "AWS::SNS::Topic",
+                                                "Properties":  {
+                                                                   "TopicName":  {
+                                                                                     "Fn::Sub":  "emip-notifications-${Environment}"
+                                                                                 }
+                                                               },
+                                                "Metadata":  {
+                                                                 "SamResourceId":  "NotificationTopic"
+                                                             }
+                                            },
+                      "WorkerFunction":  {
+                                             "Type":  "AWS::Lambda::Function",
+                                             "Metadata":  {
+                                                              "SamResourceId":  "WorkerFunction"
+                                                          },
+                                             "Properties":  {
+                                                                "Code":  {
+                                                                             "S3Bucket":  "aws-sam-cli-managed-default-samclisourcebucket-vsdazhrg2kjh",
+                                                                             "S3Key":  "9467114dfd66cecce5234f24ca77158b"
+                                                                         },
+                                                                "Description":  "EMIP async analysis/report worker",
+                                                                "FunctionName":  {
+                                                                                     "Fn::Sub":  "emip-worker-${Environment}"
+                                                                                 },
+                                                                "Handler":  "worker_handler.handler",
+                                                                "MemorySize":  2048,
+                                                                "Role":  {
+                                                                             "Fn::GetAtt":  [
+                                                                                                "WorkerFunctionRole",
+                                                                                                "Arn"
+                                                                                            ]
+                                                                         },
+                                                                "Runtime":  "python3.14",
+                                                                "Timeout":  600,
+                                                                "Environment":  {
+                                                                                    "Variables":  {
+                                                                                                      "ENVIRONMENT":  {
+                                                                                                                          "Ref":  "Environment"
+                                                                                                                      },
+                                                                                                      "LOG_LEVEL":  {
+                                                                                                                        "Ref":  "LogLevel"
+                                                                                                                    },
+                                                                                                      "S3_BUCKET":  {
+                                                                                                                        "Ref":  "ArtifactsBucket"
+                                                                                                                    },
+                                                                                                      "DYNAMODB_JOBS_TABLE":  {
+                                                                                                                                  "Ref":  "JobsTable"
+                                                                                                                              },
+                                                                                                      "DYNAMODB_ANALYSIS_TABLE":  {
+                                                                                                                                      "Ref":  "AnalysisTable"
+                                                                                                                                  },
+                                                                                                      "BEDROCK_MODEL_PRIMARY":  "amazon.nova-pro-v1:0",
+                                                                                                      "BEDROCK_MODEL_FALLBACK":  "amazon.nova-lite-v1:0",
+                                                                                                      "BEDROCK_MODEL_CODEGEN":  "amazon.nova-pro-v1:0",
+                                                                                                      "SQS_ANALYSIS_QUEUE":  {
+                                                                                                                                 "Ref":  "AnalysisQueue"
+                                                                                                                             },
+                                                                                                      "SQS_ANALYSIS_DLQ":  {
+                                                                                                                               "Ref":  "AnalysisDLQ"
+                                                                                                                           },
+                                                                                                      "SNS_NOTIFICATION_TOPIC":  {
+                                                                                                                                     "Ref":  "NotificationTopic"
+                                                                                                                                 },
+                                                                                                      "EVENTBRIDGE_BUS_NAME":  {
+                                                                                                                                   "Ref":  "EventsBus"
+                                                                                                                               },
+                                                                                                      "CHECKPOINT_ENABLED":  "true",
+                                                                                                      "ARTIFACT_VERSION":  "1.0.0",
+                                                                                                      "CORS_ORIGINS":  "*"
+                                                                                                  }
+                                                                                },
+                                                                "Tags":  [
+                                                                             {
+                                                                                 "Key":  "lambda:createdBy",
+                                                                                 "Value":  "SAM"
+                                                                             }
+                                                                         ],
+                                                                "TracingConfig":  {
+                                                                                      "Mode":  "Active"
+                                                                                  },
+                                                                "Layers":  [
+                                                                               {
+                                                                                   "Ref":  "DependenciesLayereef5916efd"
+                                                                               }
+                                                                           ],
+                                                                "ReservedConcurrentExecutions":  20,
+                                                                "Architectures":  [
+                                                                                      "x86_64"
+                                                                                  ]
+                                                            }
+                                         },
+                      "WorkerFunctionSQSEvent":  {
+                                                     "Type":  "AWS::Lambda::EventSourceMapping",
+                                                     "Properties":  {
+                                                                        "BatchSize":  1,
+                                                                        "EventSourceArn":  {
+                                                                                               "Fn::GetAtt":  [
+                                                                                                                  "AnalysisQueue",
+                                                                                                                  "Arn"
+                                                                                                              ]
+                                                                                           },
+                                                                        "FunctionName":  {
+                                                                                             "Ref":  "WorkerFunction"
+                                                                                         },
+                                                                        "MaximumBatchingWindowInSeconds":  5
+                                                                    }
+                                                 },
+                      "AnalysisQueue":  {
+                                            "Type":  "AWS::SQS::Queue",
+                                            "Properties":  {
+                                                               "QueueName":  {
+                                                                                 "Fn::Sub":  "emip-analysis-queue-${Environment}"
+                                                                             },
+                                                               "VisibilityTimeout":  660,
+                                                               "KmsMasterKeyId":  "alias/aws/sqs",
+                                                               "RedrivePolicy":  {
+                                                                                     "deadLetterTargetArn":  {
+                                                                                                                 "Fn::GetAtt":  [
+                                                                                                                                    "AnalysisDLQ",
+                                                                                                                                    "Arn"
+                                                                                                                                ]
+                                                                                                             },
+                                                                                     "maxReceiveCount":  3
+                                                                                 }
+                                                           },
+                                            "Metadata":  {
+                                                             "SamResourceId":  "AnalysisQueue"
+                                                         }
+                                        },
+                      "DependenciesLayereef5916efd":  {
+                                                          "Type":  "AWS::Lambda::LayerVersion",
+                                                          "DeletionPolicy":  "Retain",
+                                                          "Properties":  {
+                                                                             "Content":  {
+                                                                                             "S3Bucket":  "aws-sam-cli-managed-default-samclisourcebucket-vsdazhrg2kjh",
+                                                                                             "S3Key":  "081cf9f94faebf97cd20359805e95403"
+                                                                                         },
+                                                                             "Description":  "EMIP Python dependencies (FastAPI, Mangum, structlog, pydantic)",
+                                                                             "LayerName":  {
+                                                                                               "Fn::Sub":  "emip-deps-dev"
+                                                                                           },
+                                                                             "CompatibleRuntimes":  [
+                                                                                                        "python3.14"
+                                                                                                    ]
+                                                                         }
+                                                      },
+                      "EventsBus":  {
+                                        "Type":  "AWS::Events::EventBus",
+                                        "Properties":  {
+                                                           "Name":  {
+                                                                        "Fn::Sub":  "emip-events-${Environment}"
+                                                                    }
+                                                       },
+                                        "Metadata":  {
+                                                         "SamResourceId":  "EventsBus"
+                                                     }
+                                    },
+                      "AnalysisTable":  {
+                                            "Type":  "AWS::DynamoDB::Table",
+                                            "DeletionPolicy":  "Retain",
+                                            "UpdateReplacePolicy":  "Retain",
+                                            "Properties":  {
+                                                               "TableName":  {
+                                                                                 "Ref":  "DynamoDBAnalysisTable"
+                                                                             },
+                                                               "BillingMode":  "PAY_PER_REQUEST",
+                                                               "AttributeDefinitions":  [
+                                                                                            {
+                                                                                                "AttributeName":  "job_id",
+                                                                                                "AttributeType":  "S"
+                                                                                            },
+                                                                                            {
+                                                                                                "AttributeName":  "analysis_type",
+                                                                                                "AttributeType":  "S"
+                                                                                            }
+                                                                                        ],
+                                                               "KeySchema":  [
+                                                                                 {
+                                                                                     "AttributeName":  "job_id",
+                                                                                     "KeyType":  "HASH"
+                                                                                 },
+                                                                                 {
+                                                                                     "AttributeName":  "analysis_type",
+                                                                                     "KeyType":  "RANGE"
+                                                                                 }
+                                                                             ]
+                                                           },
+                                            "Metadata":  {
+                                                             "SamResourceId":  "AnalysisTable"
+                                                         }
+                                        }
+                  }
+}

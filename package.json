@@ -1,0 +1,13 @@
+{
+  "name": "emip",
+  "version": "1.0.0",
+  "description": "Enterprise Modernization Intelligence Platform",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "deploy": "cd infrastructure && npx cdk deploy --all",
+    "deploy:backend": "cd infrastructure && npx cdk deploy EMIP-Backend",
+    "synth": "cd infrastructure && npx cdk synth"
+  }
+}

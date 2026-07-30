@@ -1,0 +1,410 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: "EMIP Backend \u2014 FastAPI + Worker Lambdas on SQS/EventBridge"
+Globals:
+  Function:
+    Timeout: 120
+    MemorySize: 1024
+    Runtime: python3.14
+    Architectures:
+    - x86_64
+    Environment:
+      Variables:
+        ENVIRONMENT:
+          Ref: Environment
+        LOG_LEVEL:
+          Ref: LogLevel
+        S3_BUCKET:
+          Ref: ArtifactsBucket
+        DYNAMODB_JOBS_TABLE:
+          Ref: JobsTable
+        DYNAMODB_ANALYSIS_TABLE:
+          Ref: AnalysisTable
+        BEDROCK_MODEL_PRIMARY: amazon.nova-pro-v1:0
+        BEDROCK_MODEL_FALLBACK: amazon.nova-lite-v1:0
+        BEDROCK_MODEL_CODEGEN: amazon.nova-pro-v1:0
+        SQS_ANALYSIS_QUEUE:
+          Ref: AnalysisQueue
+        SQS_ANALYSIS_DLQ:
+          Ref: AnalysisDLQ
+        SNS_NOTIFICATION_TOPIC:
+          Ref: NotificationTopic
+        EVENTBRIDGE_BUS_NAME:
+          Ref: EventsBus
+        CHECKPOINT_ENABLED: 'true'
+        ARTIFACT_VERSION: 1.0.0
+        CORS_ORIGINS: '*'
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+    - dev
+    - staging
+    - prod
+    Description: Deployment environment
+  LogLevel:
+    Type: String
+    Default: INFO
+    AllowedValues:
+    - DEBUG
+    - INFO
+    - WARNING
+    - ERROR
+  ApiKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+    Description: API key for authentication (empty = disabled)
+  DynamoDBJobsTable:
+    Type: String
+    Default: emip-jobs-dev
+  DynamoDBAnalysisTable:
+    Type: String
+    Default: emip-analysis-dev
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name:
+        Fn::Sub: emip-api-${Environment}
+      StageName:
+        Ref: Environment
+      BinaryMediaTypes:
+      - '*/*'
+      Cors:
+        AllowMethods: '''*'''
+        AllowHeaders: '''*'''
+        AllowOrigin: '''*'''
+      TracingEnabled: true
+      Auth:
+        DefaultAuthorizer: NONE
+      MethodSettings:
+      - HttpMethod: '*'
+        ResourcePath: /*
+        LoggingLevel: INFO
+        DataTraceEnabled: false
+        MetricsEnabled: true
+    Metadata:
+      SamResourceId: ApiGateway
+  DependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName:
+        Fn::Sub: emip-deps-${Environment}
+      ContentUri: s3://aws-sam-cli-managed-default-samclisourcebucket-vsdazhrg2kjh/081cf9f94faebf97cd20359805e95403
+      CompatibleRuntimes:
+      - python3.14
+      Description: EMIP Python dependencies (FastAPI, Mangum, structlog, pydantic)
+    Metadata:
+      SamResourceId: DependenciesLayer
+  ArtifactsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName:
+        Fn::Sub: emip-artifacts-${Environment}-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+        - Id: CleanupOldAnalysis
+          Status: Enabled
+          Transitions:
+          - TransitionInDays: 30
+            StorageClass: GLACIER
+    Metadata:
+      SamResourceId: ArtifactsBucket
+  JobsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName:
+        Ref: DynamoDBJobsTable
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: job_id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: job_id
+        KeyType: HASH
+    Metadata:
+      SamResourceId: JobsTable
+  AnalysisTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName:
+        Ref: DynamoDBAnalysisTable
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: job_id
+        AttributeType: S
+      - AttributeName: analysis_type
+        AttributeType: S
+      KeySchema:
+      - AttributeName: job_id
+        KeyType: HASH
+      - AttributeName: analysis_type
+        KeyType: RANGE
+    Metadata:
+      SamResourceId: AnalysisTable
+  AnalysisDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName:
+        Fn::Sub: emip-analysis-dlq-${Environment}
+      MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
+    Metadata:
+      SamResourceId: AnalysisDLQ
+  AnalysisQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName:
+        Fn::Sub: emip-analysis-queue-${Environment}
+      VisibilityTimeout: 660
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt:
+          - AnalysisDLQ
+          - Arn
+        maxReceiveCount: 3
+    Metadata:
+      SamResourceId: AnalysisQueue
+  EventsBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name:
+        Fn::Sub: emip-events-${Environment}
+    Metadata:
+      SamResourceId: EventsBus
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::Sub: emip-notifications-${Environment}
+    Metadata:
+      SamResourceId: NotificationTopic
+  BackendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /emip/backend
+      RetentionInDays: 30
+    Metadata:
+      SamResourceId: BackendLogGroup
+  WorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /emip/worker
+      RetentionInDays: 30
+    Metadata:
+      SamResourceId: WorkerLogGroup
+  BackendFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: emip-backend-${Environment}
+      Handler: handler.handler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-vsdazhrg2kjh/9467114dfd66cecce5234f24ca77158b
+      Description: EMIP backend API
+      MemorySize: 1024
+      Timeout: 120
+      ReservedConcurrentExecutions: 50
+      Tracing: Active
+      Layers:
+      - Ref: DependenciesLayer
+      Policies:
+      - S3CrudPolicy:
+          BucketName:
+            Ref: ArtifactsBucket
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: JobsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AnalysisTable
+      - Statement:
+        - Effect: Allow
+          Action:
+          - sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - AnalysisQueue
+            - Arn
+      - CloudWatchPutMetricPolicy: {}
+      - Statement:
+        - Effect: Allow
+          Action:
+          - bedrock:Converse
+          Resource: '*'
+      - Statement:
+        - Effect: Allow
+          Action:
+          - sns:Publish
+          Resource:
+            Ref: NotificationTopic
+      - Statement:
+        - Effect: Allow
+          Action:
+          - events:PutEvents
+          Resource:
+            Fn::GetAtt:
+            - EventsBus
+            - Arn
+      - Statement:
+        - Effect: Allow
+          Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+          Resource: '*'
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: ApiGateway
+            Path: /{proxy+}
+            Method: ANY
+        RootEvent:
+          Type: Api
+          Properties:
+            RestApiId:
+              Ref: ApiGateway
+            Path: /
+            Method: ANY
+    Metadata:
+      SamResourceId: BackendFunction
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName:
+        Fn::Sub: emip-worker-${Environment}
+      Handler: worker_handler.handler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-vsdazhrg2kjh/9467114dfd66cecce5234f24ca77158b
+      Description: EMIP async analysis/report worker
+      MemorySize: 2048
+      Timeout: 600
+      ReservedConcurrentExecutions: 20
+      Tracing: Active
+      Layers:
+      - Ref: DependenciesLayer
+      Policies:
+      - S3CrudPolicy:
+          BucketName:
+            Ref: ArtifactsBucket
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: JobsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AnalysisTable
+      - Statement:
+        - Effect: Allow
+          Action:
+          - sqs:ReceiveMessage
+          - sqs:DeleteMessage
+          - sqs:GetQueueAttributes
+          Resource:
+            Fn::GetAtt:
+            - AnalysisQueue
+            - Arn
+      - Statement:
+        - Effect: Allow
+          Action:
+          - sqs:SendMessage
+          Resource:
+            Fn::GetAtt:
+            - AnalysisDLQ
+            - Arn
+      - CloudWatchPutMetricPolicy: {}
+      - Statement:
+        - Effect: Allow
+          Action:
+          - bedrock:Converse
+          Resource: '*'
+      - Statement:
+        - Effect: Allow
+          Action:
+          - sns:Publish
+          Resource:
+            Ref: NotificationTopic
+      - Statement:
+        - Effect: Allow
+          Action:
+          - events:PutEvents
+          Resource:
+            Fn::GetAtt:
+            - EventsBus
+            - Arn
+      - Statement:
+        - Effect: Allow
+          Action:
+          - xray:PutTraceSegments
+          - xray:PutTelemetryRecords
+          Resource: '*'
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - AnalysisQueue
+              - Arn
+            BatchSize: 1
+            MaximumBatchingWindowInSeconds: 5
+    Metadata:
+      SamResourceId: WorkerFunction
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value:
+      Fn::Sub: https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+  FunctionArn:
+    Description: Backend Lambda function ARN
+    Value:
+      Fn::GetAtt:
+      - BackendFunction
+      - Arn
+  WorkerFunctionArn:
+    Description: Worker Lambda function ARN
+    Value:
+      Fn::GetAtt:
+      - WorkerFunction
+      - Arn
+  ArtifactsBucketName:
+    Description: S3 bucket for artifacts
+    Value:
+      Ref: ArtifactsBucket
+  JobsTableName:
+    Description: DynamoDB jobs table
+    Value:
+      Ref: JobsTable
+  AnalysisTableName:
+    Description: DynamoDB analysis table
+    Value:
+      Ref: AnalysisTable
+  AnalysisQueueUrl:
+    Description: SQS analysis queue URL
+    Value:
+      Ref: AnalysisQueue
+  AnalysisDLQUrl:
+    Description: SQS analysis dead letter queue URL
+    Value:
+      Ref: AnalysisDLQ
+  EventsBusName:
+    Description: EventBridge bus name
+    Value:
+      Ref: EventsBus
+  NotificationTopicArn:
+    Description: SNS notification topic ARN
+    Value:
+      Ref: NotificationTopic

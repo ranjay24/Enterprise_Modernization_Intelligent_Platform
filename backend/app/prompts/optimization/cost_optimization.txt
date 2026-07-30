@@ -1,0 +1,42 @@
+# prompt:optimization/cost_optimization
+# version: 2.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Cost optimization analysis
+
+Estimate cost comparison between current monolith and proposed microservices.
+
+MONOLITH METRICS:
+- LOC: {{total_lines}}
+- Classes: {{total_classes}}
+- Endpoints: {{total_endpoints}}
+
+PROPOSED SERVICES: {{proposed_service_count}}
+
+SERVICE BOUNDARIES (simplified):
+{{service_boundaries_summary_json}}
+
+Generate:
+{
+  "current_monthly": N,
+  "post_migration_monthly": N,
+  "monthly_savings": N,
+  "annual_savings": N,
+  "one_time_cost": N,
+  "payback_months": N,
+  "breakdown_current": {"infrastructure": N, "operations": N, "development": N},
+  "breakdown_post": {"infrastructure": N, "operations": N, "development_savings": N},
+  "optimization_recommendations": [
+    {
+      "service": "ServiceName",
+      "recommendation": "What to optimize",
+      "estimated_savings": N,
+      "effort": "low|medium|high"
+    }
+  ],
+  "free_tier_optimizations": [
+    {"service": "AWS Service", "benefit": "What you get for free", "duration": "12 months"}
+  ]
+}
+
+Return ONLY valid JSON.

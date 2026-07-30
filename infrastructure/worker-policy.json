@@ -1,0 +1,77 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::emip-artifacts-dev-479752407378",
+        "arn:aws:s3:::emip-artifacts-dev-479752407378/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-jobs-dev",
+        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-jobs-dev/index/*",
+        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-analysis-dev",
+        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-analysis-dev/index/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes"
+      ],
+      "Resource": "arn:aws:sqs:us-east-1:479752407378:emip-analysis-queue-dev"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["sqs:SendMessage"],
+      "Resource": "arn:aws:sqs:us-east-1:479752407378:emip-analysis-dlq-dev"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["cloudwatch:PutMetricData"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["bedrock:Converse"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["sns:Publish"],
+      "Resource": "arn:aws:sns:us-east-1:479752407378:emip-notifications-dev"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["events:PutEvents"],
+      "Resource": "arn:aws:events:us-east-1:479752407378:event-bus/emip-events-dev"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "xray:PutTraceSegments",
+        "xray:PutTelemetryRecords"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

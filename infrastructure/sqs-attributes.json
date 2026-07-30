@@ -1,0 +1,4 @@
+{
+  "VisibilityTimeout": "660",
+  "RedrivePolicy": "{\"deadLetterTargetArn\":\"arn:aws:sqs:us-east-1:479752407378:emip-analysis-dlq-dev\",\"maxReceiveCount\":3}"
+}

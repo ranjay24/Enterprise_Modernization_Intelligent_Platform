@@ -1,0 +1,65 @@
+# prompt:migration/migration_plan
+# version: 2.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Generate phased migration plan
+
+Generate a phased migration plan for this modernization project.
+
+PROJECT: {{project_name}}
+TOTAL SERVICES: {{total_services}}
+OVERALL COMPLEXITY: {{migration_complexity}}
+
+SERVICE BOUNDARIES:
+{{service_boundaries_json}}
+
+READINESS SCORES:
+{{readiness_scores_json}}
+
+SERVICE DEPENDENCY GRAPH:
+{{service_deps_json}}
+
+For each migration wave, provide:
+{
+  "wave_number": N,
+  "name": "Wave Name",
+  "phase": "wave_1|wave_2|wave_3|wave_4|wave_5",
+  "objectives": ["Objective 1", "Objective 2"],
+  "services": [
+    {
+      "service_name": "ServiceName",
+      "description": "What this service does",
+      "source_classes": ["Class1"],
+      "effort": {
+        "story_points": N,
+        "engineer_weeks": N,
+        "engineers_needed": N,
+        "complexity": "simple|moderate|complex"
+      },
+      "risks": ["risk1"],
+      "rollback_strategy": "How to rollback",
+      "dependencies": ["OtherService"],
+      "aws_services": ["ECS", "RDS"]
+    }
+  ],
+  "timeline_weeks": N,
+  "estimated_engineers": N,
+  "dependencies": [wave_numbers],
+  "risk_level": "low|medium|high|critical",
+  "migration_complexity": "low|moderate|high",
+  "rollback_considerations": ["consideration1"],
+  "validation_criteria": ["criteria1"]
+}
+
+WAVE PLANNING RULES:
+1. Wave 1: Lowest coupling, lowest risk. 1-2 services max.
+2. Wave 2: Low-medium coupling. 1-2 services.
+3. Wave 3: Medium coupling. 1-2 services.
+4. Wave 4: Higher coupling or circular dependencies.
+5. Wave 5: God class services needing decomposition.
+6. Max 2 services per wave unless trivially simple.
+7. Services with circular deps must be in consecutive waves.
+8. Each wave must be independently deployable.
+9. Each wave must include rollback strategy.
+
+Return ONLY valid JSON: {"waves": [...], "total_weeks": N, "total_services": N, "recommended_order": [...], "critical_path": [...]}

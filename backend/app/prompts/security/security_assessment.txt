@@ -1,0 +1,41 @@
+# prompt:security/security_assessment
+# version: 2.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Security assessment of the codebase
+
+Perform a security assessment of this Java application.
+
+HARDCODED SECRETS:
+{{hardcoded_secrets_json}}
+
+RISK FINDINGS (security-related):
+{{security_risk_findings_json}}
+
+Readiness Score: {{security_readiness_score}}
+
+Generate a security assessment with:
+{
+  "findings": [
+    {
+      "severity": "critical|high|medium|low",
+      "category": "credentials|injection|auth|data_exposure|configuration",
+      "title": "Finding title",
+      "description": "Detailed description",
+      "affected_components": ["class1"],
+      "recommendation": "How to fix",
+      "compliance_impact": "OWASP/PCI/HIPAA reference"
+    }
+  ],
+  "overall_risk": "low|medium|high|critical",
+  "priority_actions": ["action1", "action2"],
+  "aws_security_services": [
+    {
+      "service": "AWS Secrets Manager",
+      "use_case": "Replace hardcoded secrets",
+      "priority": "high"
+    }
+  ]
+}
+
+Return ONLY valid JSON.

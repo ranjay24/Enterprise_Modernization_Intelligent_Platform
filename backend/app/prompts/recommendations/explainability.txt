@@ -1,0 +1,41 @@
+# prompt:recommendations/explainability
+# version: 2.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Generate detailed explainability for recommendations
+
+For the following AI recommendations, generate detailed explainability data.
+
+RECOMMENDATIONS:
+{{recommendations_json}}
+
+PROJECT CONTEXT:
+- Architecture: {{architecture_style}}
+- Total Classes: {{total_classes}}
+- Risk Level: {{overall_risk}}
+
+For EACH recommendation, provide:
+{
+  "recommendation_id": "matching ID",
+  "explainability": {
+    "why": "Clear explanation of why this recommendation exists",
+    "evidence_count": N,
+    "reasoning_chain": {
+      "steps": ["Step 1: Observed...", "Step 2: Analysis shows...", "Step 3: Therefore..."],
+      "conclusion": "Final conclusion",
+      "confidence_factors": ["Factor 1", "Factor 2"]
+    },
+    "tradeoffs": ["Tradeoff 1", "Tradeoff 2"],
+    "alternatives": ["Alternative approach 1", "Alternative approach 2"],
+    "confidence_reasoning": "Why this confidence level was chosen",
+    "supporting_metrics": {"metric_name": value}
+  }
+}
+
+RULES:
+1. Reasoning chains must be logical and step-by-step
+2. Tradeoffs must be honest — include downsides
+3. Alternatives must be realistic options
+4. Supporting metrics must come from the analysis data
+
+Return ONLY valid JSON: {"explanations": [...]}

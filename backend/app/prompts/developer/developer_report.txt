@@ -1,0 +1,98 @@
+# prompt:developer/developer_report
+# version: 2.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Generate detailed developer engineering report
+
+Generate a detailed engineering report for developers.
+
+PROJECT: {{project_name}}
+ARCHITECTURE: {{architecture_style}}
+
+CODEBASE METRICS:
+{{metrics_json}}
+
+QUALITY METRICS:
+{{quality_metrics_json}}
+
+DEPENDENCY GRAPH:
+- Total edges: {{dependency_edge_count}}
+- Circular deps: {{circular_dep_count}}
+- Package deps: {{package_dep_count}}
+
+RISK FINDINGS:
+{{risk_findings_json}}
+
+READINESS DIMENSIONS:
+{{readiness_dimensions_json}}
+
+Generate:
+{
+  "architecture_findings": [
+    {
+      "finding_id": "AF-001",
+      "category": "architecture|dependency|quality|security",
+      "title": "Finding title",
+      "description": "Detailed description",
+      "affected_components": ["class1", "class2"],
+      "severity": "info|low|medium|high|critical",
+      "recommendation": "What to do about it",
+      "reference": "Reference to code or documentation"
+    }
+  ],
+  "dependency_analysis": {
+    "total_dependencies": N,
+    "circular_dependencies": N,
+    "highly_coupled_classes": [{"name": "", "coupling_score": N, "reason": ""}],
+    "package_dependencies": {"pkg": ["deps"]},
+    "coupling_hotspots": ["class1", "class2"],
+    "recommendations": ["rec1", "rec2"]
+  },
+  "code_quality": {
+    "overall_score": 0-100,
+    "maintainability_score": 0-100,
+    "complexity_score": 0-100,
+    "technical_debt_hours": N,
+    "duplication_percent": N,
+    "god_class_count": N,
+    "long_method_count": N,
+    "issues": ["issue1", "issue2"]
+  },
+  "technical_debt": [
+    {
+      "debt_id": "TD-001",
+      "title": "Debt item title",
+      "category": "architecture|code|dependency|testing|documentation",
+      "description": "What the debt is",
+      "estimated_effort_hours": N,
+      "priority": "low|medium|high",
+      "affected_components": ["class1"]
+    }
+  ],
+  "risk_assessment": [...],
+  "migration_opportunities": [
+    {
+      "opportunity_id": "MO-001",
+      "title": "Opportunity title",
+      "description": "What can be improved",
+      "source_classes": ["class1", "class2"],
+      "target_pattern": "microservice|layered|event-driven",
+      "difficulty": "simple|moderate|complex",
+      "business_value": "Why it matters",
+      "technical_steps": ["step1", "step2"]
+    }
+  ],
+  "aws_service_recommendations": [
+    {
+      "service_name": "Amazon ECS",
+      "use_case": "Container orchestration",
+      "justification": "Why this service",
+      "alternatives": ["EKS", "Lambda"],
+      "pricing_model": "Pay per use",
+      "free_tier_eligible": true
+    }
+  ],
+  "key_findings": ["finding1", "finding2"]
+}
+
+Return ONLY valid JSON.

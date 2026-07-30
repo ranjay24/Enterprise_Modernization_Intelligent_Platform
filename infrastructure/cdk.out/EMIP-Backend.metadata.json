@@ -1,0 +1,851 @@
+{
+  "/EMIP-Backend": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/Custom::S3AutoDeleteObjectsCustomResourceProvider": [
+    {
+      "type": "aws:cdk:is-custom-resource-handler-customResourceProvider",
+      "data": true
+    }
+  ],
+  "/EMIP-Backend/JobsTable": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "JobsTable1970BC16"
+      }
+    }
+  ],
+  "/EMIP-Backend/AnalysisTable": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "AnalysisTableD62A254E"
+      }
+    }
+  ],
+  "/EMIP-Backend/BackendService": [
+    {
+      "type": "aws:cdk:warning",
+      "data": "Enable the 'circuitBreaker' property to trigger a quicker deployment failure if tasks are failing to come start (without this setting deployments may take up to 3 hours to fail). [ack: @aws-cdk/aws-ecs:shouldUseCircuitBreaker]",
+      "trace": [
+        "Annotations.addMessage (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\core\\lib\\annotations.js:1:3506)",
+        "Annotations.addWarningV2 (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\core\\lib\\annotations.js:1:2194)",
+        "new BaseService2 (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ecs\\lib\\base\\base-service.js:1:14671)",
+        "new BaseService2 (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\core\\lib\\no-box-stack-traces.js:1:345)",
+        "new FargateService2 (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ecs\\lib\\fargate\\fargate-service.js:1:7829)",
+        "new FargateService2 (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\core\\lib\\prop-injectable.js:1:855)",
+        "Kernel._Kernel_create (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\tmp70576t1n\\lib\\program.js:1:62551)",
+        "Kernel.create (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\tmp70576t1n\\lib\\program.js:1:53289)",
+        "KernelHost.processRequest (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\tmp70576t1n\\lib\\program.js:1:228006)",
+        "KernelHost.run (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\tmp70576t1n\\lib\\program.js:1:226990)",
+        "Immediate._onImmediate (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\tmp70576t1n\\lib\\program.js:1:227034)",
+        "process.processImmediate (node:internal/timers:484:21)"
+      ]
+    },
+    {
+      "type": "aws:cdk:warning",
+      "data": "minHealthyPercent has not been configured so the default value of 50% is used. The number of running tasks will decrease below the desired count during deployments etc. See https://github.com/aws/aws-cdk/issues/31705 [ack: @aws-cdk/aws-ecs:minHealthyPercent]",
+      "trace": [
+        "Annotations.addMessage (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\core\\lib\\annotations.js:1:3506)",
+        "Annotations.addWarningV2 (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\core\\lib\\annotations.js:1:2194)",
+        "new BaseService2 (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ecs\\lib\\base\\base-service.js:1:16295)",
+        "new BaseService2 (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\core\\lib\\no-box-stack-traces.js:1:345)",
+        "new FargateService2 (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ecs\\lib\\fargate\\fargate-service.js:1:7829)",
+        "new FargateService2 (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\core\\lib\\prop-injectable.js:1:855)",
+        "Kernel._Kernel_create (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\tmp70576t1n\\lib\\program.js:1:62551)",
+        "Kernel.create (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\tmp70576t1n\\lib\\program.js:1:53289)",
+        "KernelHost.processRequest (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\tmp70576t1n\\lib\\program.js:1:228006)",
+        "KernelHost.run (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\tmp70576t1n\\lib\\program.js:1:226990)",
+        "Immediate._onImmediate (C:\\Users\\ADMIN\\AppData\\Local\\Temp\\tmp70576t1n\\lib\\program.js:1:227034)",
+        "process.processImmediate (node:internal/timers:484:21)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/ArtifactsBucket/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ArtifactsBucket2AAC5544"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    },
+    {
+      "type": "aws:cdk:analytics:mixin",
+      "data": {
+        "mixin": "aws-cdk-lib.aws_s3.mixins.BucketAutoDeleteObjects"
+      }
+    }
+  ],
+  "/EMIP-Backend/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/JobsTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "JobsTable1970BC16"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/AnalysisTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AnalysisTableD62A254E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpc86D241EA"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/IGW": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcIGW04E3BC8F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/VPCGW": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcVPCGWAFF60EBC"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPCluster/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPCluster4B5DB87E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/TaskRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TaskRole30FC0FBB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/ExecutionRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExecutionRole605A040B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPLogGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPLogGroupCAFB96F1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPALB/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPALB22ABD82D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/APISecurityGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "APISecurityGroup03A8566F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/APISecurityGroup/from EMIPBackendEMIPALBSecurityGroup5BC553C3:8000": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "APISecurityGroupfromEMIPBackendEMIPALBSecurityGroup5BC553C3800003A67149"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/BackendTaskDef/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BackendTaskDef6ECE986E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/BackendService/Service": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BackendService7A4224EE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPIFBCBAA35"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/Account": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPIAccountED7B2803"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/Endpoint": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPIEndpointC25EAE8B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/AnalysisQueue/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AnalysisQueue251119DF"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/ArtifactsBucket/Policy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ArtifactsBucketPolicy852CB646"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    },
+    {
+      "type": "aws:cdk:analytics:mixin",
+      "data": {
+        "mixin": "aws-cdk-lib.aws_s3.mixins.BucketPolicyStatements"
+      }
+    }
+  ],
+  "/EMIP-Backend/ArtifactsBucket/AutoDeleteObjectsCustomResource/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ArtifactsBucketAutoDeleteObjectsCustomResource0E3B4320"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PublicSubnet1/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPublicSubnet1Subnet6DB55141"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PublicSubnet1/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPublicSubnet1RouteTable3F79C628"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PublicSubnet1/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPublicSubnet1RouteTableAssociation6A90F497"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PublicSubnet1/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPublicSubnet1DefaultRoute46F1DEC6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:208 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib, jsii runtime..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PublicSubnet1/EIP": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPublicSubnet1EIPB7827B95"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PublicSubnet1/NATGateway": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPublicSubnet1NATGateway6000978C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PublicSubnet2/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPublicSubnet2SubnetC7B10671"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PublicSubnet2/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPublicSubnet2RouteTable8185EC74"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PublicSubnet2/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPublicSubnet2RouteTableAssociationB12B929C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PublicSubnet2/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPublicSubnet2DefaultRouteAACD9229"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:208 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib, jsii runtime..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PrivateSubnet1/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPrivateSubnet1SubnetD4F65F10"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PrivateSubnet1/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPrivateSubnet1RouteTable80135A52"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PrivateSubnet1/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPrivateSubnet1RouteTableAssociationC88AFBEF"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PrivateSubnet1/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPrivateSubnet1DefaultRoute55D46C75"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PrivateSubnet2/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPrivateSubnet2Subnet0A16F895"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PrivateSubnet2/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPrivateSubnet2RouteTable7FB26BEE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PrivateSubnet2/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPrivateSubnet2RouteTableAssociationE765D2A6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\ADMIN\\AppData\\Local\\Temp\\jsii-kernel-LtnBHo\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPVpc/PrivateSubnet2/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPVpcPrivateSubnet2DefaultRoute816AC8CD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/TaskRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TaskRoleDefaultPolicy07FC53DE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/ExecutionRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExecutionRoleDefaultPolicyA5B92313"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPALB/SecurityGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPALBSecurityGroup691CA00F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPALB/SecurityGroup/to EMIPBackendAPISecurityGroup1D6F471E:8000": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPALBSecurityGrouptoEMIPBackendAPISecurityGroup1D6F471E80002890FA10"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPALB/Listener/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPALBListenerD3D1EEC1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/CloudWatchRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPICloudWatchRole27F8D77C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/Deployment/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPIDeployment99674053caa2c555e2908b0318cf18b6c3b2c875"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/DeploymentStage.prod/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPIDeploymentStageprodCBC65425"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPALB/Listener/BackendTargetGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPALBListenerBackendTargetGroup540E2407"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/Default/OPTIONS/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPIOPTIONS1A172257"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/Default/{proxy+}/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPIproxyEF7EFD0D"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/Default/ANY/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPIANY4C182313"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/Default/{proxy+}/OPTIONS/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPIproxyOPTIONSA70C0FB0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/EMIP-Backend/EMIPAPI/Default/{proxy+}/ANY/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EMIPAPIproxyANYEBAC18D3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, jsii runtime...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ]
+}

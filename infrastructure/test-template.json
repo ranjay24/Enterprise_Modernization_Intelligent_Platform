@@ -1,0 +1,12 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Test stack",
+  "Resources": {
+    "TestBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {"Fn::Sub": "emip-test-${AWS::AccountId}"}
+      }
+    }
+  }
+}

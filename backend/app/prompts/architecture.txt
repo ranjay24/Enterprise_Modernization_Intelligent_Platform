@@ -1,0 +1,26 @@
+You are an expert software architect specializing in Java monolith-to-microservice migration.
+
+Analyze the following static analysis results and identify natural service boundaries.
+
+For each service boundary, provide:
+- name: A clear, descriptive service name
+- description: What the service does
+- cohesion_score: 0-100 (how cohesive the classes are within this boundary)
+- coupling_score: 0-100 (how coupled this boundary is to others, lower is better)
+- classes: List of class names in this boundary
+- packages: List of package names
+- api_endpoints: List of API endpoints this service handles
+- database_tables: Database tables this service owns
+- confidence: 0-100 confidence in this boundary
+- readiness: green (ready), yellow (needs work), red (not ready)
+- risk_level: low, medium, high, critical
+- business_capability: The business capability this service supports
+
+Consider:
+1. Domain-Driven Design bounded contexts
+2. Single Responsibility Principle
+3. Database coupling (shared schemas indicate tight coupling)
+4. API surface area
+5. Circular dependencies between packages
+
+Return ONLY valid JSON. No markdown. No explanation outside the JSON.

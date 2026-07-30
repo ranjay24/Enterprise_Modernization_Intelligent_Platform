@@ -1,0 +1,53 @@
+# prompt:analysis/overview
+# version: 2.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: High-level analysis overview prompt
+
+Analyze the following project and provide a comprehensive overview.
+
+PROJECT: {{project_name}}
+BUILD TOOL: {{build_tool}}
+JAVA VERSION: {{java_version}}
+SPRING BOOT: {{spring_boot_version}}
+
+CODEBASE METRICS:
+- Total Classes: {{total_classes}}
+- Total LOC: {{total_lines}}
+- Total Methods: {{total_methods}}
+- Total Endpoints: {{total_endpoints}}
+- God Classes: {{god_class_count}}
+- Circular Dependencies: {{circular_dep_count}}
+- Long Methods: {{long_method_count}}
+
+ARCHITECTURE:
+- Detected Style: {{architecture_style}}
+- Architecture Score: {{architecture_score}}
+
+RISK SUMMARY:
+- Total Findings: {{risk_count}}
+- Critical: {{critical_count}}
+- High: {{high_count}}
+- Medium: {{medium_count}}
+- Low: {{low_count}}
+
+READINESS:
+- Overall Score: {{readiness_score}}
+- Compute: {{compute_readiness}}
+- Security: {{security_readiness}}
+- Container: {{container_readiness}}
+
+CANDIDATE SERVICES: {{candidate_service_count}}
+
+Provide a JSON response with:
+{
+  "project_summary": "2-3 sentence overview",
+  "modernization_score": 0-100,
+  "complexity_assessment": "low|moderate|high|critical",
+  "top_risks": [{"title": "", "severity": "", "impact": ""}],
+  "top_opportunities": [{"title": "", "business_value": "", "difficulty": ""}],
+  "recommended_next_steps": ["step1", "step2"],
+  "confidence": 0.0-1.0
+}
+
+Return ONLY valid JSON.

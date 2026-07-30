@@ -1,0 +1,64 @@
+# prompt:adr/adr_generation
+# version: 2.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Generate Architecture Decision Records
+
+Generate Architecture Decision Records for the key decisions in this modernization.
+
+PROJECT: {{project_name}}
+ARCHITECTURE: {{architecture_style}}
+SERVICE BOUNDARIES:
+{{service_boundaries_json}}
+
+KEY RISKS:
+{{risk_findings_json}}
+
+For EACH significant decision, generate an ADR with:
+{
+  "adr_id": "ADR-XXX",
+  "title": "Clear decision title",
+  "status": "proposed|accepted",
+  "context": "Background, problem statement, and forces at play",
+  "problem": "What specific problem does this ADR address?",
+  "decision": "What was decided and why",
+  "options": [
+    {
+      "name": "Option A",
+      "description": "Description",
+      "pros": ["pro1", "pro2"],
+      "cons": ["con1", "con2"]
+    }
+  ],
+  "tradeoffs": {
+    "pros": ["benefit 1", "benefit 2"],
+    "cons": ["cost 1", "cost 2"]
+  },
+  "consequences": {
+    "positive": ["positive outcome 1"],
+    "negative": ["negative outcome 1"],
+    "risks": ["risk 1"]
+  },
+  "confidence": 0.0-1.0,
+  "migration_impact": {
+    "complexity": "low|moderate|high",
+    "estimated_effort": "description",
+    "team_size": N,
+    "risk_factors": ["risk1"]
+  }
+}
+
+REQUIRED ADR CATEGORIES:
+1. Service extraction boundaries (which services to extract and in what order)
+2. Database separation strategy
+3. Communication patterns (sync vs async)
+4. API design approach
+5. Deployment and infrastructure decisions
+
+RULES:
+1. Each ADR must reference specific code evidence
+2. Context must mention actual god classes or circular dependencies by name
+3. Tradeoffs must be balanced — include real downsides
+4. Alternatives must be viable options that were considered
+
+Return ONLY valid JSON: {"adrs": [...]}

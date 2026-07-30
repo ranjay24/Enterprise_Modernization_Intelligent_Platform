@@ -1,0 +1,37 @@
+{
+  "account": "479752407378",
+  "region": "us-east-1",
+  "services": {
+    "s3": {
+      "buckets": [
+        {"name": "emip-code-dev", "purpose": "Upload storage for ZIP files"},
+        {"name": "emip-artifacts-dev-479752407378", "purpose": "Analysis artifact storage"}
+      ],
+      "encryption": "AES-256 SSE",
+      "versioning": true,
+      "lifecycle": "30-day transition to GLACIER"
+    },
+    "lambda": {
+      "backend": {"name": "emip-backend-dev", "memory": 1024, "timeout": 120, "runtime": "python3.14"},
+      "worker": {"name": "emip-worker-dev", "memory": 2048, "timeout": 600, "runtime": "python3.14"}
+    },
+    "dynamodb": {
+      "jobs": {"name": "emip-jobs-dev", "partition_key": "job_id", "capacity": "PAY_PER_REQUEST", "pitr": true},
+      "analysis": {"name": "emip-analysis-dev", "partition_key": "job_id", "sort_key": "analysis_type", "capacity": "PAY_PER_REQUEST", "pitr": true}
+    },
+    "sqs": {
+      "queue": {"name": "emip-analysis-queue-dev", "visibility_timeout": 660},
+      "dlq": {"name": "emip-analysis-dlq-dev", "max_retries": 3}
+    },
+    "sns": {"topic": "emip-notifications-dev"},
+    "eventbridge": {"bus": "emip-events-dev"},
+    "cloudwatch": {"log_groups": ["/emip/backend", "/emip/worker"]},
+    "iam": {
+      "roles": ["emip-backend-role-dev", "emip-worker-role-dev"],
+      "policies": ["S3 CRUD", "DynamoDB CRUD", "SQS SendMessage/ReceiveMessage/DeleteMessage", "Bedrock Converse", "SNS Publish", "EventBridge PutEvents", "CloudWatch PutMetricData", "X-Ray"]
+    },
+    "api_gateway": {"name": "EMIP Backend API", "cors": true, "binary_media": true},
+    "lambda_layer": {"name": "emip-deps-dev", "version": 6, "contents": ["FastAPI", "Mangum", "structlog", "pydantic", "boto3"]}
+  },
+  "deployment_options": ["SAM (primary, template.yaml)", "CDK (alternative, cdk_stacks/backend_stack.py)"]
+}

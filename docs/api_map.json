@@ -1,0 +1,21 @@
+{
+  "base_url": "/api",
+  "endpoints": [
+    {"method": "GET", "path": "/health", "description": "Simple health check", "response": "200: {status: healthy}"},
+    {"method": "GET", "path": "/api/health", "description": "Health check with AWS connectivity", "response": "200: {status, aws: {s3, dynamodb, sqs}}"},
+    {"method": "GET", "path": "/api/capabilities", "description": "List platform capabilities", "response": "200: {capabilities, categories}"},
+    {"method": "GET", "path": "/api/jobs", "description": "List all jobs", "response": "200: [{job_id, status, filename, created_at, ...}]"},
+    {"method": "POST", "path": "/api/upload", "description": "Upload ZIP file", "request": "multipart/form-data (file)", "response": "200: {job_id, status, filename, size}", "errors": ["400: invalid file type", "400: empty ZIP", "422: validation failed"]},
+    {"method": "POST", "path": "/api/analyze/{job_id}", "description": "Trigger analysis", "request": "{profile?, resume_from?}", "response": "202: {job_id, status, message}", "errors": ["404: not found", "400: invalid state"]},
+    {"method": "GET", "path": "/api/results/{job_id}", "description": "Get job status and results", "response": "200: {status, progress, results, artifacts}", "errors": ["404: not found"]},
+    {"method": "GET", "path": "/api/results/{job_id}/artifacts", "description": "List artifacts", "response": "200: [{stage, artifact_type, path, size, created_at}]", "errors": ["404: not found"]},
+    {"method": "GET", "path": "/api/results/{job_id}/manifest", "description": "Get deployment manifest", "response": "200: {artifacts, pipeline_metadata, ...}", "errors": ["404: not found"]},
+    {"method": "POST", "path": "/api/jobs/{job_id}/pause", "description": "Pause analysis", "response": "200: {status: paused}"},
+    {"method": "POST", "path": "/api/jobs/{job_id}/resume", "description": "Resume analysis", "response": "200: {status: resumed}"},
+    {"method": "POST", "path": "/api/jobs/{job_id}/cancel", "description": "Cancel analysis", "response": "200: {status: cancelled}"},
+    {"method": "DELETE", "path": "/api/jobs/{job_id}", "description": "Delete job and all data", "response": "200: {status: deleted}", "errors": ["404: not found"]},
+    {"method": "POST", "path": "/api/deploy", "description": "Generate service code", "request": "{service_name, ...}", "response": "200: {generated_files, ...}"}
+  ],
+  "auth": "X-API-Key header (optional via APIKeyMiddleware)",
+  "common_headers": ["Content-Type", "Accept", "X-Request-ID", "X-Correlation-ID"]
+}

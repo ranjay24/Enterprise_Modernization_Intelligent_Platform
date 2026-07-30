@@ -1,0 +1,26 @@
+{
+  "stages": [
+    {"order": 1, "name": "extraction", "requires_ai": false, "depends_on": [], "artifact": "extraction.json", "key_class": "ExtractionStage"},
+    {"order": 2, "name": "static_analysis", "requires_ai": false, "depends_on": ["extraction"], "artifact": "static_analysis.json", "key_class": "StaticAnalysisStage"},
+    {"order": 3, "name": "enterprise_analysis", "requires_ai": false, "depends_on": ["static_analysis"], "artifact": "enterprise_analysis.json", "key_class": "EnterpriseAnalysisStage"},
+    {"order": 4, "name": "ai_boundaries", "requires_ai": true, "depends_on": ["static_analysis", "enterprise_analysis"], "artifact": "ai_boundaries.json", "key_class": "AIBoundariesStage"},
+    {"order": 5, "name": "ai_readiness", "requires_ai": true, "depends_on": ["ai_boundaries"], "artifact": "ai_readiness.json", "key_class": "AIReadinessStage"},
+    {"order": 6, "name": "ai_adrs", "requires_ai": true, "depends_on": ["ai_readiness"], "artifact": "ai_adrs.json", "key_class": "AIADRStage"},
+    {"order": 7, "name": "ai_migration", "requires_ai": true, "depends_on": ["ai_adrs"], "artifact": "ai_migration.json", "key_class": "AIMigrationStage"},
+    {"order": 8, "name": "ai_cost", "requires_ai": true, "depends_on": ["ai_migration"], "artifact": "ai_cost.json", "key_class": "AICostStage"},
+    {"order": 9, "name": "ai_explainability", "requires_ai": true, "depends_on": ["ai_cost"], "artifact": "ai_explainability.json", "key_class": "AIExplainabilityStage"},
+    {"order": 10, "name": "results_assembly", "requires_ai": false, "depends_on": ["ai_explainability"], "artifact": "results_assembly.json", "key_class": "ResultsAssemblyStage"},
+    {"order": 11, "name": "report_generation", "requires_ai": false, "depends_on": ["results_assembly"], "artifact": "report_generation.json", "key_class": "ReportGenerationStage"},
+    {"order": 12, "name": "manifest", "requires_ai": false, "depends_on": ["results_assembly"], "artifact": "manifest.json", "key_class": "ManifestStage"}
+  ],
+  "execution_models": ["sequential", "parallel_dag"],
+  "failure_handling": {
+    "level_1": "AI succeeds → result used directly",
+    "level_2": "AI fails → deterministic fallback produces degraded result",
+    "level_3": "Empty result → pipeline continues with empty data",
+    "level_4": "Pipeline continues → degraded flag set in manifest"
+  },
+  "pipeline_class": "PipelineEngine (backend/app/pipeline/engine.py)",
+  "base_stage_class": "PipelineStage (backend/app/pipeline/stage.py)",
+  "base_ai_stage_class": "BaseAIStage (backend/app/pipeline/stages/base.py)"
+}

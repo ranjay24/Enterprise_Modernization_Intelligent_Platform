@@ -1,0 +1,22 @@
+{
+  "artifact_system": {
+    "repository": "ArtifactRepository (backend/app/artifacts/repository.py)",
+    "versioner": "ArtifactVersioner (backend/app/artifacts/version.py)",
+    "storage": "S3 + DynamoDB metadata",
+    "version_policy": "Increment version field on schema changes, maintain backward compatibility"
+  },
+  "artifacts": [
+    {"stage": "extraction", "key_fields": ["files", "total_files", "total_size", "languages", "encoding"]},
+    {"stage": "static_analysis", "key_fields": ["classes", "packages", "endpoints", "dependencies", "god_classes", "circular_dependencies", "dead_code"]},
+    {"stage": "enterprise_analysis", "key_fields": ["code_metrics", "quality_metrics", "dependency_graph", "architecture", "risk_findings", "readiness_scores", "recommendations"]},
+    {"stage": "ai_boundaries", "key_fields": ["services", "boundaries", "candidates", "confidence"]},
+    {"stage": "ai_readiness", "key_fields": ["dimensions", "scores", "evidence", "overall_score"]},
+    {"stage": "ai_adrs", "key_fields": ["adrs", "decisions", "alternatives", "tradeoffs", "consequences"]},
+    {"stage": "ai_migration", "key_fields": ["waves", "timeline", "dependencies", "risks", "effort"]},
+    {"stage": "ai_cost", "key_fields": ["current_cost", "post_migration_cost", "savings", "assumptions", "payback_period"]},
+    {"stage": "ai_explainability", "key_fields": ["confidence_breakdown", "risk_heatmap", "reasoning", "business_capabilities"]},
+    {"stage": "results_assembly", "key_fields": ["summary", "all_results", "metrics", "validation"]},
+    {"stage": "report_generation", "key_fields": ["executive_report", "developer_report", "risk_report", "architecture_report", "migration_roadmap"]},
+    {"stage": "manifest", "key_fields": ["artifacts", "pipeline_metadata", "token_usage", "cost_tracking", "degraded_stages", "timing"]}
+  ]
+}

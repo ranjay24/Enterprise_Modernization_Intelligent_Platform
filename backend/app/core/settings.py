@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # Analysis Mode
     analysis_mode: AnalysisMode = Field(
-        default=AnalysisMode.BENCHMARK,
+        default=AnalysisMode.FAST,
         description="Analysis quality mode: fast, normal, or deep",
     )
 

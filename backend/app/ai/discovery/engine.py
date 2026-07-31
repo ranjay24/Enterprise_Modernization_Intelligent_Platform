@@ -37,6 +37,8 @@ class AIMicroserviceDiscovery:
                 "packages": svc.get("packages", []),
                 "api_endpoints": svc.get("api_endpoints", []),
                 "database_tables": svc.get("database_tables", []),
+                "cohesion_score": svc.get("cohesion_score", 50),
+                "coupling_score": svc.get("coupling_score", 50),
                 "confidence": svc.get("confidence", 0.5),
                 "readiness": svc.get("readiness", "yellow"),
                 "risk_level": svc.get("risk_level", "medium"),

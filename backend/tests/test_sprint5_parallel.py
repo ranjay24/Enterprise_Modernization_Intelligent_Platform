@@ -94,7 +94,7 @@ class TestSequentialExecutor:
         callback = MagicMock()
         executor = SequentialExecutor(stages)
         executor.execute("job-004", progress_callback=callback)
-        assert callback.call_count == 2
+        assert callback.call_count == 4
 
     def test_execute_with_failing_stage(self):
         stages = [

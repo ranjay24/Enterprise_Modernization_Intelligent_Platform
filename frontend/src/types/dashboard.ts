@@ -20,6 +20,7 @@ export interface ReadinessDimension {
   score: number;
   weight: number;
   evidence: string;
+  evidence_bullets?: string[];
   status: 'healthy' | 'warning' | 'critical';
   icon: string;
 }

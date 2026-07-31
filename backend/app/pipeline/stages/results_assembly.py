@@ -66,6 +66,22 @@ class ResultsAssemblyStage(PipelineStage):
             "sprint2_analysis": context.get_result_data("enterprise_analysis"),
         }
 
+        # Run post-assembly validation and compute quality score
+        try:
+            from app.validation.analysis_validator import AnalysisValidator
+            from app.validation.quality_score import compute_analysis_quality
+
+            validator = AnalysisValidator()
+            v_results = validator.validate(full_results)
+            quality = compute_analysis_quality(v_results)
+
+            full_results["validation"] = {
+                "results": [v.to_dict() for v in v_results],
+                "quality": quality,
+            }
+        except Exception as e:
+            logger.warning("results_validation_failed", error=str(e))
+
         versioner = ArtifactVersioner()
         content_json = json.dumps(full_results, default=str)
         return Artifact(

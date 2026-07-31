@@ -33,6 +33,28 @@ class EnterpriseAnalysisStage(PipelineStage):
         extracted_path = context.get_result_data("extraction")["extracted_path"]
         result = run_analysis(context.job_id, extracted_path)
 
+        # Spec 01: attach detected business capabilities to the enterprise
+        # artifact so downstream AI stages and the frontend can consume them.
+        static_analysis = context.get_result_data("static_analysis")
+        if static_analysis:
+            from app.ai.context.domains import detect_business_domains
+            domains = detect_business_domains(static_analysis)
+            result["business_capabilities"] = [
+                {
+                    "name": d["name"],
+                    "entity": d["entity"],
+                    "description": d["description"],
+                    "confidence": d["confidence"],
+                    "classes": d["classes"],
+                    "controllers": d["controllers"],
+                    "services": d["services"],
+                    "repositories": d["repositories"],
+                    "api_endpoint_count": len(d["api_endpoints"]),
+                    "dependencies": d.get("dependencies", []),
+                }
+                for d in domains
+            ]
+
         versioner = ArtifactVersioner()
         return Artifact(
             metadata=ArtifactMetadata(

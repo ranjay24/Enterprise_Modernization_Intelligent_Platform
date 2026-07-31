@@ -40,7 +40,7 @@ class CodeMetricsAnalyzer(Analyzer):
         long_methods = self._find_long_methods(classes)
 
         all_complexities = []
-        for c in classes:
+        for c in all_types:
             if not c.method_lines:
                 continue
             for i, m in enumerate(c.method_lines):
@@ -54,19 +54,20 @@ class CodeMetricsAnalyzer(Analyzer):
             pkg_tree.setdefault(c.package or "default", []).append(c.name)
 
         endpoint_count = len(context.endpoints)
+        all_annotated = classes + interfaces
         controller_count = sum(1 for c in classes if c.is_controller)
         service_count = sum(1 for c in classes if c.is_service)
-        repository_count = sum(1 for c in classes if c.is_repository)
+        repository_count = sum(1 for c in all_annotated if c.is_repository)
         entity_count = sum(1 for c in classes if c.is_entity)
         dto_count = sum(1 for c in classes if c.is_dto)
         config_count = sum(1 for c in classes if c.is_configuration)
-        exception_count = sum(1 for c in classes if c.is_exception)
+        exception_count = sum(1 for c in all_annotated if c.is_exception)
         utility_count = sum(1 for c in classes if c.is_utility)
 
         metrics = {
             "total_files": len(all_types),
             "total_lines": total_loc,
-            "total_classes": len(classes),
+            "total_classes": len(all_types),
             "total_interfaces": len(interfaces),
             "total_enums": len(context.parsed_enums),
             "total_methods": total_methods,

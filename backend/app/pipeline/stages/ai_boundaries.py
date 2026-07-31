@@ -36,8 +36,11 @@ class AIBoundariesStage(BaseAIStage):
             analysis_data["candidate_services"] = enterprise.get("candidate_services", [])
             analysis_data["bounded_contexts"] = enterprise.get("bounded_contexts", [])
             analysis_data["sprint2_analysis"] = enterprise
+            analysis_data["quality_metrics"] = enterprise.get("quality_metrics", {})
+            analysis_data["coupling_analysis"] = enterprise.get("coupling_analysis", {})
         result = ai_orchestrator.analyze_service_boundaries(analysis_data)
-        return result, "sprint3-deterministic"
+        model_id = result.pop("_model_id", "sprint3-deterministic")
+        return result, model_id
 
     def fallback(self) -> dict:
         return {"services": [], "summary": "Boundary detection unavailable"}

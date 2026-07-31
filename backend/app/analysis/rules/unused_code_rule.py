@@ -53,5 +53,5 @@ class UnusedCodeRule(Rule):
 
 
 def _is_spring_managed(c) -> bool:
-    spring = {"Service", "Component", "Controller", "RestController", "Repository", "Configuration"}
+    spring = {"Service", "Component", "Controller", "RestController", "Repository", "Configuration", "RestControllerAdvice", "ControllerAdvice"}
     return bool(spring.intersection(c.annotations))

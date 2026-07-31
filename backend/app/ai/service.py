@@ -11,6 +11,7 @@ from app.ai.contracts.developer import AIDeveloperReport
 from app.ai.contracts.executive import AIExecutiveSummary
 from app.ai.contracts.migration import AIMigrationPlan
 from app.ai.contracts.recommendation import AIRecommendation
+from app.ai.context.domains import build_service_dependency_graph
 from app.ai.engine import AIEngine
 
 logger = structlog.get_logger(__name__)
@@ -40,12 +41,17 @@ class AIService:
     def engine(self) -> AIEngine:
         return self._engine
 
+    def _graph_variables(self, analysis_data: dict) -> dict:
+        """Graph JSON variables shared by every AI prompt."""
+        return self._engine.build_graph_variables(analysis_data)
+
     def generate_recommendations(
         self, analysis_data: dict, job_id: str = ""
     ) -> tuple[list[AIRecommendation], dict]:
         """Generate AI-powered modernization recommendations."""
         ctx = self._engine.build_context(analysis_data, job_id)
         template_vars = ctx.to_template_variables()
+        template_vars.update(self._graph_variables(analysis_data))
         template_vars["candidate_services_json"] = _compact_json(ctx.candidate_services)
         template_vars["bounded_contexts_json"] = _compact_json(ctx.bounded_contexts)
         template_vars["risk_findings_json"] = _compact_json(ctx.risk_findings)
@@ -73,7 +79,10 @@ class AIService:
         """Generate Architecture Decision Records."""
         ctx = self._engine.build_context(analysis_data, job_id)
         template_vars = ctx.to_template_variables()
-        template_vars["service_boundaries_json"] = _compact_json(ctx.candidate_services)
+        template_vars.update(self._graph_variables(analysis_data))
+        template_vars["service_boundaries_json"] = _compact_json(
+            analysis_data.get("candidate_services") or ctx.candidate_services
+        )
         template_vars["risk_findings_json"] = _compact_json(ctx.risk_findings)
 
         result, metadata, used_ai = self._engine.invoke_ai_with_fallback(
@@ -99,9 +108,13 @@ class AIService:
         """Generate phased migration plan."""
         ctx = self._engine.build_context(analysis_data, job_id)
         template_vars = ctx.to_template_variables()
-        template_vars["service_boundaries_json"] = _compact_json(ctx.candidate_services)
+        template_vars.update(self._graph_variables(analysis_data))
+        boundaries = analysis_data.get("candidate_services") or ctx.candidate_services
+        template_vars["service_boundaries_json"] = _compact_json(boundaries)
         template_vars["readiness_scores_json"] = _compact_json(ctx.readiness_summary)
-        template_vars["service_deps_json"] = _compact_json({})
+        template_vars["service_deps_json"] = _compact_json(
+            build_service_dependency_graph(boundaries, analysis_data)
+        )
 
         result, metadata, used_ai = self._engine.invoke_ai_with_fallback(
             prompt_id="migration/migration_plan",
@@ -169,10 +182,29 @@ class AIService:
     def discover_services(
         self, analysis_data: dict, job_id: str = ""
     ) -> tuple[dict, dict]:
-        """Discover candidate microservices."""
+        """Discover candidate microservices via AI with deterministic fallback.
+
+        Uses the full-graph boundary prompt (architecture/service_boundaries)
+        which carries classes, package tree, endpoints and god classes. When
+        Bedrock is unavailable the deterministic discovery runs instead.
+        """
         ctx = self._engine.build_context(analysis_data, job_id)
-        discovery = self._engine._discovery.discover(ctx)
-        return discovery, {"used_ai": False}
+        template_vars = ctx.to_template_variables()
+        template_vars.update(self._graph_variables(analysis_data))
+
+        result, metadata, used_ai = self._engine.invoke_ai_with_fallback(
+            prompt_id="architecture/service_boundaries",
+            template_variables=template_vars,
+            fallback_fn=lambda: self._engine._discovery.discover(ctx),
+            expected_fields=["services"],
+            job_id=job_id,
+        )
+
+        if used_ai and isinstance(result, dict) and result.get("services"):
+            discovery = self._engine._discovery.discover(ctx, result)
+        else:
+            discovery = self._engine._discovery.discover(ctx)
+        return discovery, metadata
 
     def get_health(self) -> dict:
         """AI subsystem health check."""

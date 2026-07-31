@@ -223,6 +223,18 @@ class AIEngine:
         """Build AI-ready context from analysis data."""
         return self._context_builder.build(analysis_data, job_id)
 
+    def build_graph_variables(self, analysis_data: dict) -> dict:
+        """Build token-budgeted graph JSON variables for AI prompts.
+
+        Carries the full static analysis graph (classes with dependencies,
+        package tree, endpoints, dependency edges, injection deps, god
+        classes, circular deps, detected business domains) into prompts
+        instead of the old package-name-only summaries.
+        """
+        from app.ai.context.domains import build_graph_prompt_sections
+
+        return build_graph_prompt_sections(analysis_data, self._profile)
+
     def get_health(self) -> dict:
         """Check health of AI subsystems."""
         return {

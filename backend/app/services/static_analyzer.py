@@ -65,6 +65,7 @@ def analyze_java_codebase(extracted_path: str) -> StaticAnalysisResult:
     all_endpoints = []
     dependency_edges = []
     package_tree = {}
+    class_contents = {}
 
     for file_path in java_files:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -73,6 +74,7 @@ def analyze_java_codebase(extracted_path: str) -> StaticAnalysisResult:
         cls = _parse_java_class(content, file_path, extracted_path)
         if cls:
             classes.append(cls)
+            class_contents[cls.name] = content
             pkg = cls.package or "default"
             if pkg not in package_tree:
                 package_tree[pkg] = []
@@ -81,14 +83,21 @@ def analyze_java_codebase(extracted_path: str) -> StaticAnalysisResult:
             endpoints = _extract_endpoints(content, cls.name)
             all_endpoints.extend(endpoints)
 
-            for dep in cls.dependencies:
-                dependency_edges.append(
-                    {"source": cls.name, "target": dep, "type": "injection"}
-                    if dep in cls.injected_fields
-                    else {"source": cls.name, "target": dep, "type": "import"}
-                )
+    # Dependency edges only capture real intra-project dependencies. Imports of
+    # external frameworks (java.*, spring, jakarta, etc.) are not code-level
+    # coupling and must not distort cohesion/coupling metrics.
+    project_class_names = {c.name for c in classes}
+    for cls in classes:
+        for dep in cls.dependencies:
+            if dep not in project_class_names:
+                continue
+            dependency_edges.append(
+                {"source": cls.name, "target": dep, "type": "injection"}
+                if dep in cls.injected_fields
+                else {"source": cls.name, "target": dep, "type": "import"}
+            )
 
-    metrics = _calculate_metrics(classes)
+    metrics = _calculate_metrics(classes, class_contents, all_endpoints)
 
     logger.info(
         "static_analysis_complete",
@@ -189,6 +198,15 @@ def _parse_java_class(content: str, file_path: str, base_path: str) -> JavaClass
         if f_type not in injected_fields and f_type not in [name]:
             field_deps.append({"type": f_type, "name": f_name, "injection_type": "declaration"})
 
+    for const_match in re.finditer(
+        r"(?:private|protected|public)\s+static\s+(?:final\s+)?(\w+(?:<[\w,\s<>]+>)?)\s+(\w+)\s*=[^;]+;",
+        content,
+    ):
+        const_type = const_match.group(1).split("<")[0].strip()
+        const_name = const_match.group(2)
+        if const_type not in injected_fields and const_type not in [name]:
+            field_deps.append({"type": const_type, "name": const_name, "injection_type": "constant"})
+
     deps = []
     for imp in imports:
         class_name = imp.split(".")[-1]
@@ -197,10 +215,13 @@ def _parse_java_class(content: str, file_path: str, base_path: str) -> JavaClass
 
     all_deps = list(set(deps + injected_fields))
 
-    is_entity = bool(re.search(r"@(?:Entity|Table|Document)", content))
-    is_controller = bool(re.search(r"@(?:RestController|Controller)", content))
-    is_service = bool(re.search(r"@(?:Service|Component)", content))
-    is_repository = bool(re.search(r"@(?:Repository|CrudRepository|JpaRepository)", content))
+    is_entity = bool(re.search(r"@(?:Entity|Table|Document)(?!\w)", content))
+    is_controller = bool(re.search(r"@(?:RestController|Controller)(?!Advice)", content))
+    is_service = bool(re.search(r"@(?:Service|Component)(?!\w)", content))
+    is_repository = bool(
+        re.search(r"@Repository(?!\w)", content)
+        or re.search(r"extends\s+(?:JpaRepository|CrudRepository|PagingAndSortingRepository|JpaSpecificationExecutor|MongoRepository|ElasticsearchRepository)(?![a-zA-Z])", content)
+    )
 
     return JavaClass(
         name=name,
@@ -239,29 +260,33 @@ def _extract_endpoints(content: str, class_name: str) -> list[APIEndpoint]:
     }
 
     for ann, method in mapping_annotations.items():
-        pattern = rf"@{ann}\s*\(\s*[\"']([^\"']+)[\"']\s*\)"
-        matches = re.findall(pattern, content)
-        for path in matches:
-            func_match = re.search(
-                rf"@{ann}.*?\n\s*(?:public|protected)\s+\S+\s+(\w+)\s*\(",
-                content,
-                re.DOTALL,
-            )
-            handler_method = func_match.group(1) if func_match else "unknown"
-            endpoints.append(
-                APIEndpoint(
-                    method=method,
-                    path=path,
-                    handler_class=class_name,
-                    handler_method=handler_method,
-                    annotations=[ann],
+        # Match the mapping annotation (string, named arg, or array of paths)
+        # together with the handler method that immediately follows it
+        # (allowing for intervening parameter annotations).
+        pattern = re.compile(
+            rf"@{ann}\s*\((?P<args>[^)]*)\)"
+            rf"(?:\s*\n\s*@\w+(?:\([^)]*\))?)*"
+            rf"\s*\n\s*(?:public|protected|private)\s+[\w<>\[\],\s?]+\s+(?P<handler>\w+)\s*\("
+        )
+        for match in pattern.finditer(content):
+            paths = re.findall(r"[\"']([^\"']+)[\"']", match.group("args"))
+            if not paths:
+                continue
+            for path in paths:
+                endpoints.append(
+                    APIEndpoint(
+                        method=method,
+                        path=path,
+                        handler_class=class_name,
+                        handler_method=match.group("handler"),
+                        annotations=[ann],
+                    )
                 )
-            )
 
     return endpoints
 
 
-def _calculate_metrics(classes: list[JavaClass]) -> dict:
+def _calculate_metrics(classes: list[JavaClass], class_contents: dict | None = None, endpoints: list[APIEndpoint] | None = None) -> dict:
     total_classes = len(classes)
     total_methods = sum(c.method_count for c in classes)
     total_loc = sum(c.lines_of_code for c in classes)
@@ -327,40 +352,9 @@ def _calculate_metrics(classes: list[JavaClass]) -> dict:
     import_only_cycles = _detect_import_only_cycles(classes)
     injection_cycles = _detect_injection_cycles(classes)
 
-    all_class_names = {c.name for c in classes}
-    used_classes = set()
-    for c in classes:
-        used_classes.update(c.dependencies)
-        if c.extends:
-            used_classes.add(c.extends)
-        used_classes.update(c.implements)
-
-    all_field_types = set()
-    for c in classes:
-        for f in c.fields:
-            all_field_types.add(f["type"])
-        for inj in c.injected_fields:
-            all_field_types.add(inj)
-
-    dead_code = [
-        {
-            "name": c.name,
-            "package": c.package,
-            "reason": "Not referenced by any other class and not a Spring-managed component",
-            "is_deprecated": "Deprecated" in c.annotations,
-        }
-        for c in classes
-        if c.name not in used_classes
-        and c.name not in all_field_types
-        and not c.is_interface
-        and not c.is_abstract
-        and not _is_dto_or_model(c)
-        and not _is_spring_managed(c)
-        and not _is_configuration_class(c)
-        and not c.name.endswith("Exception")
-        and not c.name.endswith("Error")
-        and "Exception" not in c.annotations
-    ]
+    dead_code_report = _detect_dead_code(
+        classes, class_contents or {}, endpoints or []
+    )
 
     shared_tables = _detect_shared_entities(classes)
     all_cycles = _dedup_cycles(import_only_cycles, injection_cycles)
@@ -377,7 +371,8 @@ def _calculate_metrics(classes: list[JavaClass]) -> dict:
         "circular_dependencies": all_cycles,
         "import_only_cycles": import_only_cycles,
         "injection_cycles": injection_cycles,
-        "dead_code": dead_code,
+        "dead_code": dead_code_report["dead_classes"],
+        "dead_code_report": dead_code_report,
         "shared_entities": shared_tables,
         "injection_dependencies": [
             {
@@ -390,6 +385,279 @@ def _calculate_metrics(classes: list[JavaClass]) -> dict:
             for inj in c.injected_fields
         ],
     }
+
+
+_DEAD_CODE_SPRING_ANNOTATIONS = {
+    "Service", "Component", "Controller", "RestController", "Repository",
+    "Configuration", "RestControllerAdvice", "ControllerAdvice",
+    "Bean", "Scheduled", "EventListener", "Conditional", "ConditionalOnProperty",
+}
+_DEAD_CODE_ENTITY_ANNOTATIONS = {"Entity", "Embeddable", "MappedSuperclass", "Table", "Document"}
+_DEAD_CODE_LOMBOK_ANNOTATIONS = {
+    "Data", "Builder", "Getter", "Setter", "AllArgsConstructor",
+    "NoArgsConstructor", "ToString", "EqualsAndHashCode", "RequiredArgsConstructor",
+}
+_DEAD_CODE_CALLBACK_METHODS = {
+    "main", "run", "init", "destroy", "start", "stop",
+    "afterPropertiesSet", "beforeDestroy", "toString", "hashCode",
+    "equals", "finalize", "clone",
+}
+
+
+def _detect_dead_code(classes, class_contents, endpoints) -> dict:
+    contents = dict(class_contents)
+    project_names = {c.name for c in classes}
+    class_map = {c.name: c for c in classes}
+
+    endpoint_methods = {
+        ep.handler_method for ep in endpoints if ep.handler_class
+    }
+    interface_methods = {
+        (c.name, m["name"])
+        for c in classes
+        if c.is_interface
+        for m in c.method_lines
+    }
+
+    def _count_references(name, exclude=None):
+        pattern = re.compile(r"\b" + re.escape(name) + r"\b")
+        total = 0
+        for cname, content in contents.items():
+            if cname == exclude:
+                continue
+            total += len(pattern.findall(content))
+        return total
+
+    def _outgoing_references(c):
+        refs = set()
+        for dep in c.dependencies:
+            if dep in project_names and dep != c.name:
+                refs.add(dep)
+        if c.extends in project_names:
+            refs.add(c.extends)
+        for impl in c.implements:
+            if impl in project_names:
+                refs.add(impl)
+        return refs
+
+    def _ignore_reason(c):
+        if ("test" in (c.file_path or "").lower()) or _is_test_class_name(c.name):
+            return ("TEST_CLASS", f"{c.name} is a test class (excluded by convention)")
+        if _is_configuration_class(c):
+            return ("CONFIGURATION", f"{c.name} is a Spring configuration/application entry point")
+        if c.is_repository:
+            return ("SPRING_COMPONENT", f"{c.name} is a Spring Data repository")
+        if c.is_controller:
+            return ("SPRING_COMPONENT", f"{c.name} is a controller exposing HTTP endpoints")
+        if _is_spring_managed(c) or _DEAD_CODE_SPRING_ANNOTATIONS.intersection(c.annotations):
+            return ("SPRING_COMPONENT", f"{c.name} is a Spring-managed component")
+        if c.is_entity or _DEAD_CODE_ENTITY_ANNOTATIONS.intersection(c.annotations):
+            return ("ENTITY", f"{c.name} is a persistent entity (mapped to storage)")
+        if _DEAD_CODE_LOMBOK_ANNOTATIONS.intersection(c.annotations) or _is_dto_or_model(c):
+            return ("GENERATED", f"{c.name} uses Lombok/annotations or is a DTO (members are generated/managed)")
+        if "Generated" in c.annotations or "generated" in (c.package or "").lower():
+            return ("GENERATED", f"{c.name} is generated code")
+        if _is_exception_class(c):
+            return ("SPRING_COMPONENT", f"{c.name} is an exception/error type (part of the public API)")
+        if c.is_interface or c.is_abstract:
+            return ("GENERATED", f"{c.name} is a {'interface' if c.is_interface else 'abstract'} contract (excluded by convention)")
+        return None
+
+    class_ignore_types = {}
+    ignored_items = []
+    for c in classes:
+        ignore = _ignore_reason(c)
+        if ignore:
+            class_ignore_types[c.name] = ignore[0]
+            ignored_items.append({"name": c.name, "type": ignore[0], "reason": ignore[1]})
+
+    dead_classes = []
+    for c in classes:
+        if c.name in class_ignore_types:
+            continue
+        if _count_references(c.name, exclude=c.name) > 0:
+            continue
+        out = _outgoing_references(c)
+        dead_classes.append({
+            "name": c.name,
+            "package": c.package,
+            "file": c.file_path,
+            "line": _symbol_line(contents.get(c.name, ""), c.name),
+            "type": "class",
+            "reason": "Class is not referenced by any other class in the project",
+            "incoming_references": 0,
+            "outgoing_references": len(out),
+            "confidence": 95,
+            "safe_to_delete": True,
+        })
+
+    dead_class_names = {d["name"] for d in dead_classes}
+    member_skip_types = {"TEST_CLASS", "CONFIGURATION", "ENTITY", "GENERATED"}
+    dead_methods = []
+    dead_fields = []
+
+    for c in classes:
+        if c.is_interface or c.is_abstract or c.name in dead_class_names:
+            continue
+        if class_ignore_types.get(c.name) in member_skip_types or _is_exception_class(c):
+            continue
+        content = contents.get(c.name, "")
+        class_endpoint_methods = {ep.handler_method for ep in endpoints if ep.handler_class == c.name}
+        override_names = set()
+        for impl in c.implements:
+            override_names.update(m for (iface, m) in interface_methods if iface == impl)
+        parent = c
+        while parent.extends and parent.extends in class_map:
+            parent = class_map[parent.extends]
+            override_names.update(m["name"] for m in parent.method_lines)
+        method_starts = sorted(m["start_line"] for m in c.method_lines if m["start_line"])
+        content_line_count = len(content.split("\n")) if content else c.lines_of_code
+
+        def _method_loc(start_line):
+            if start_line is None or start_line not in method_starts:
+                return 0
+            idx = method_starts.index(start_line)
+            end = method_starts[idx + 1] if idx + 1 < len(method_starts) else content_line_count
+            return max(0, end - start_line)
+
+        for m in c.method_lines:
+            mname = m["name"]
+            if mname in _DEAD_CODE_CALLBACK_METHODS or mname in class_endpoint_methods:
+                continue
+            if mname in override_names or re.match(r"^(get|set|is|has)", mname):
+                continue
+            if _method_annotations(content, m["start_line"]) & {"Override", "Scheduled", "EventListener", "PostConstruct", "PreDestroy", "Bean", "ExceptionHandler"}:
+                continue
+            if m["start_line"] is None:
+                continue
+            total = _count_invocations(mname, contents)
+            if total > 1:
+                continue
+            is_private = _is_private_line(content, m["start_line"])
+            dead_methods.append({
+                "name": mname,
+                "class": c.name,
+                "package": c.package,
+                "file": c.file_path,
+                "line": m["start_line"],
+                "type": "method",
+                "reason": "Method is not invoked from any code in the project",
+                "incoming_references": total - 1,
+                "outgoing_references": _method_loc(m["start_line"]),
+                "confidence": 90 if is_private else 80,
+                "safe_to_delete": is_private,
+            })
+
+        for f in c.fields:
+            fname = f["name"]
+            if f.get("injection_type") == "field":
+                continue
+            if fname == "serialVersionUID":
+                continue
+            total = _count_references(fname, contents)
+            if total > 1:
+                continue
+            is_private = _field_is_private(content, fname)
+            dead_fields.append({
+                "name": fname,
+                "class": c.name,
+                "package": c.package,
+                "file": c.file_path,
+                "line": _symbol_line(content, fname),
+                "type": "field",
+                "reason": "Field is never referenced outside its own declaration",
+                "incoming_references": total - 1,
+                "outgoing_references": 0,
+                "confidence": 90 if is_private else 80,
+                "safe_to_delete": is_private,
+            })
+
+    ignored_test_classes = sum(1 for i in ignored_items if i["type"] == "TEST_CLASS")
+    return {
+        "dead_classes": dead_classes,
+        "dead_methods": dead_methods,
+        "dead_fields": dead_fields,
+        "ignored_items": ignored_items,
+        "summary": {
+            "dead_classes": len(dead_classes),
+            "dead_methods": len(dead_methods),
+            "dead_fields": len(dead_fields),
+            "ignored_framework_classes": len(ignored_items) - ignored_test_classes,
+            "ignored_test_classes": ignored_test_classes,
+        },
+    }
+
+
+def _is_test_class_name(name):
+    return (
+        name.endswith("Test") or name.endswith("Tests")
+        or name.endswith("IntegrationTest")
+        or (name.endswith("IT") and name != "IT")
+    )
+
+
+def _is_exception_class(c):
+    return (
+        c.name.endswith("Exception") or c.name.endswith("Exceptions")
+        or c.name.endswith("Error") or c.name.endswith("Errors")
+    )
+
+
+def _count_invocations(name, contents, exclude=None):
+    pattern = re.compile(r"\b" + re.escape(name) + r"\s*\(")
+    total = 0
+    for cname, content in contents.items():
+        if cname == exclude:
+            continue
+        total += len(pattern.findall(content))
+    return total
+
+
+def _method_annotations(content, start_line):
+    annotations = set()
+    if not content or not start_line:
+        return annotations
+    lines = content.split("\n")
+    i = start_line - 2
+    while i >= 0:
+        stripped = lines[i].strip()
+        if not stripped:
+            break
+        match = re.match(r"@(\w+)", stripped)
+        if match:
+            annotations.add(match.group(1))
+            i -= 1
+        else:
+            break
+    return annotations
+
+
+def _is_private_line(content, start_line):
+    if not content or not start_line:
+        return False
+    lines = content.split("\n")
+    if start_line <= len(lines):
+        return bool(re.search(r"\bprivate\b", lines[start_line - 1]))
+    return False
+
+
+def _field_is_private(content, fname):
+    if not content:
+        return False
+    match = re.search(r"[^;\n]*\bprivate\b[^;\n]*\b" + re.escape(fname) + r"\b", content)
+    return bool(match)
+
+
+def _symbol_line(content, name):
+    if not content:
+        return None
+    match = re.search(r"\b(?:class|interface|enum)\s+" + re.escape(name) + r"\b|\b" + re.escape(name) + r"\s+[A-Za-z_][A-Za-z0-9_]*\s*=|;\s*" + re.escape(name) + r"\b", content)
+    if match:
+        return content[:match.start()].count("\n") + 1
+    match = re.search(r"\b" + re.escape(name) + r"\b", content)
+    if match:
+        return content[:match.start()].count("\n") + 1
+    return None
 
 
 def _is_dto_or_model(c: JavaClass) -> bool:
@@ -427,6 +695,10 @@ def _is_god_class(c: JavaClass) -> bool:
         return True
     if c.lines_of_code > 300 and c.method_count > 10 and len(c.injected_fields) > 0:
         return True
+    if c.is_controller and c.method_count > 12:
+        return True
+    if c.method_count > 15 and len(c.dependencies) > 8:
+        return True
     return False
 
 
@@ -438,6 +710,10 @@ def _god_class_reason(c: JavaClass) -> str:
         reasons.append(f"{c.method_count} methods (threshold: 10)")
     if len(c.injected_fields) > 5:
         reasons.append(f"{len(c.injected_fields)} injected dependencies (threshold: 5)")
+    if c.is_controller and c.method_count > 12:
+        reasons.append(f"{c.method_count} methods in controller (threshold: 12)")
+    if c.method_count > 15 and len(c.dependencies) > 8:
+        reasons.append(f"{c.method_count} methods with {len(c.dependencies)} dependencies")
     if not reasons:
         reasons.append("Exceeds complexity thresholds")
     return "; ".join(reasons)
@@ -531,25 +807,26 @@ def _detect_shared_entities(classes: list[JavaClass]) -> list[dict]:
     if len(entities) < 2:
         return []
 
-    class_map = {c.name: c for c in classes}
     entity_referencers = {}
     for entity in entities:
         referencers = set()
         for c in classes:
             if c.name == entity.name:
                 continue
+            if not c.is_service:
+                continue
             if entity.name in c.dependencies or entity.name in c.injected_fields:
-                referencers.add(c.package)
+                referencers.add(c.name)
         entity_referencers[entity.name] = referencers
 
     shared = []
     for entity in entities:
-        ref_packages = entity_referencers.get(entity.name, set())
-        if len(ref_packages) > 1:
+        ref_services = entity_referencers.get(entity.name, set())
+        if len(ref_services) > 1:
             shared.append({
                 "entity": entity.name,
-                "packages": list(ref_packages),
-                "concern": f"Entity {entity.name} referenced by classes in {len(ref_packages)} different packages",
+                "services": sorted(ref_services),
+                "concern": f"Entity {entity.name} referenced by {len(ref_services)} different service classes",
             })
 
     return shared

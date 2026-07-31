@@ -1,18 +1,22 @@
 import type { HealthMetric } from '@/types/dashboard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { cn } from '@/utils/cn';
+import { getHealthStatus } from '@/utils/formatters';
 
 function HealthCard({ data }: { data: HealthMetric }) {
   const valuePct = Math.min(100, Math.max(0, (data.value / data.maxValue) * 100));
 
-  const barColor = data.status === 'healthy' ? 'bg-success' :
-    data.status === 'warning' ? 'bg-warning' : 'bg-danger';
+  const isDebt = (data.id && data.id.includes('debt')) || (data.title && data.title.toLowerCase().includes('debt'));
+  const status = isDebt ? getHealthStatus(data.id || data.title, data.value) : (data.status || getHealthStatus(data.id || data.title, data.value));
 
-  const statusColor = data.status === 'healthy' ? 'text-success' :
-    data.status === 'warning' ? 'text-warning' : 'text-danger';
+  const barColor = status === 'healthy' ? 'bg-success' :
+    status === 'warning' ? 'bg-warning' : 'bg-danger';
 
-  const statusDot = data.status === 'healthy' ? 'bg-success' :
-    data.status === 'warning' ? 'bg-warning' : 'bg-danger';
+  const statusColor = status === 'healthy' ? 'text-success' :
+    status === 'warning' ? 'text-warning' : 'text-danger';
+
+  const statusDot = status === 'healthy' ? 'bg-success' :
+    status === 'warning' ? 'bg-warning' : 'bg-danger';
 
   return (
     <div className="rounded-xl border bg-card p-4 hover:shadow-sm transition-all duration-fast">
@@ -20,7 +24,7 @@ function HealthCard({ data }: { data: HealthMetric }) {
         <h4 className="text-sm font-semibold text-foreground">{data.title}</h4>
         <span className={cn('inline-flex items-center gap-1.5 text-xs font-medium', statusColor)}>
           <span className={cn('w-1.5 h-1.5 rounded-full', statusDot)} />
-          {data.status}
+          {status}
         </span>
       </div>
       <div className="flex items-baseline gap-1 mb-3">

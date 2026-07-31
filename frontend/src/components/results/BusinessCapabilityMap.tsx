@@ -10,6 +10,9 @@ const iconMap: Record<string, string> = {
   'User Management': 'Users',
   'Financial Operations': 'CreditCard',
   'Order Management': 'ShoppingCart',
+  'Course Management': 'Truck',
+  'Employee Management': 'Users',
+  'Feedback Management': 'Bell',
 };
 
 const colorMap: Record<string, string> = {
@@ -18,33 +21,41 @@ const colorMap: Record<string, string> = {
   'User Management': 'bg-purple-500',
   'Financial Operations': 'bg-yellow-500',
   'Order Management': 'bg-orange-500',
+  'Course Management': 'bg-teal-500',
+  'Employee Management': 'bg-indigo-500',
+  'Feedback Management': 'bg-pink-500',
 };
 
 export function BusinessCapabilityMap({ services }: { services: ServiceBoundary[] }) {
-  const capabilities: BusinessCapability[] = services
-    .filter((s) => s.business_capability)
-    .reduce((acc: BusinessCapability[], svc) => {
-      const exists = acc.find((c) => c.name === svc.business_capability);
+  const capabilities: BusinessCapability[] = services.reduce(
+    (acc: BusinessCapability[], svc) => {
+      const name = svc.business_capability || 'Core Application';
+      const exists = acc.find((c) => c.name === name);
       if (exists) {
         exists.classes += svc.classes.length;
         exists.readiness = Math.min(exists.readiness, mapApiServiceToCapability(svc).readiness);
+        exists.confidence = Math.max(exists.confidence, svc.confidence || 0);
         return acc;
       }
       const mapped = mapApiServiceToCapability(svc);
       acc.push({
-        id: `cap-${svc.name}`,
-        name: svc.business_capability!,
-        description: svc.description,
+        id: `cap-${name.replace(/\s+/g, '-').toLowerCase()}`,
+        name,
+        description:
+          svc.description ||
+          `${name} capability identified across the application`,
         readiness: mapped.readiness,
         confidence: mapped.confidence,
         risk: mapped.risk,
         classes: mapped.classes,
         recommendedService: svc.name,
-        color: colorMap[svc.business_capability!] || 'bg-gray-500',
-        icon: iconMap[svc.business_capability!] || 'Layers',
+        color: colorMap[name] || 'bg-gray-500',
+        icon: iconMap[name] || 'Layers',
       });
       return acc;
-    }, []);
+    },
+    [],
+  );
 
   return (
     <section>

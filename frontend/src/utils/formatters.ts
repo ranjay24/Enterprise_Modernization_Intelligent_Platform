@@ -32,3 +32,17 @@ export function formatConfidence(raw: unknown): number {
   if (val <= 0) return 0;
   return val <= 1 ? Math.round(val * 100) : Math.round(val);
 }
+
+export function getHealthStatus(metricKey: string, score: number): 'healthy' | 'warning' | 'critical' {
+  const key = metricKey.toLowerCase();
+  if (key.includes('debt') || key.includes('tech-debt') || key.includes('tech_debt') || key === 'technical_debt') {
+    if (score <= 20) return 'healthy';
+    if (score <= 50) return 'warning';
+    return 'critical';
+  }
+
+  if (score >= 70) return 'healthy';
+  if (score >= 40) return 'warning';
+  return 'critical';
+}
+

@@ -100,7 +100,7 @@ export default function ResultsPage() {
         <div className="grid grid-cols-4 gap-px bg-[var(--border-subtle)] rounded-lg overflow-hidden mt-5">
           {[
             { label: 'Service Boundaries', value: analysis.service_boundaries?.length ?? 0 },
-            { label: 'ADRs Generated', value: analysis.adrs?.filter((a: any) => a.status === 'accepted').length ?? 0 },
+            { label: 'ADRs Generated', value: analysis.adrs?.length ?? 0 },
             { label: 'Migration Waves', value: analysis.migration_waves?.length ?? 0 },
             { label: 'Annual Savings', value: analysis.cost_comparison?.annual_savings ? `$${(analysis.cost_comparison.annual_savings / 1000).toFixed(0)}k` : '-' },
           ].map((stat) => (

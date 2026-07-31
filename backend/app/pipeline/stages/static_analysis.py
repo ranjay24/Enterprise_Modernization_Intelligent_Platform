@@ -40,6 +40,7 @@ class StaticAnalysisStage(PipelineStage):
                     "name": c.name, "package": c.package, "file_path": c.file_path,
                     "lines_of_code": c.lines_of_code, "method_count": c.method_count,
                     "annotations": c.annotations, "imports": c.imports,
+                    "annotations_with_params": c.annotations_with_params,
                     "dependencies": c.dependencies, "extends": c.extends,
                     "implements": c.implements, "injected_fields": c.injected_fields,
                     "fields": c.fields, "is_entity": c.is_entity,

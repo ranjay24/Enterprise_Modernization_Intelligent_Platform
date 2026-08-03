@@ -39,7 +39,7 @@ class AIBoundariesStage(BaseAIStage):
             analysis_data["quality_metrics"] = enterprise.get("quality_metrics", {})
             analysis_data["coupling_analysis"] = enterprise.get("coupling_analysis", {})
         result = ai_orchestrator.analyze_service_boundaries(analysis_data)
-        model_id = result.pop("_model_id", "sprint3-deterministic")
+        model_id = result.pop("_model_id", "deterministic-fallback")
         return result, model_id
 
     def fallback(self) -> dict:

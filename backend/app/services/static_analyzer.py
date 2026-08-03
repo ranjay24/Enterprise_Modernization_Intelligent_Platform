@@ -35,6 +35,8 @@ class JavaClass:
     is_interface: bool = False
     is_abstract: bool = False
     annotations_with_params: dict = field(default_factory=dict)
+    end_line: int = 0
+    segment_start_line: int = 0
 
 
 @dataclass
@@ -71,16 +73,22 @@ def analyze_java_codebase(extracted_path: str) -> StaticAnalysisResult:
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
 
-        cls = _parse_java_class(content, file_path, extracted_path)
-        if cls:
+        for cls, segment in _parse_java_classes(content, file_path, extracted_path):
+            # A file may declare multiple classes (single-file monoliths). Keep
+            # names unique across the project so metrics and dependency edges
+            # never conflate two classes that share a simple name.
+            cls.name = _deduplicate_name(cls.name, {c.name for c in classes})
             classes.append(cls)
-            class_contents[cls.name] = content
+            # Store the per-class masked segment: comments/strings are blanked
+            # out (so they never count as code references) and only this
+            # class's own body is searched for its symbols.
+            class_contents[cls.name] = _mask_code(segment)
             pkg = cls.package or "default"
             if pkg not in package_tree:
                 package_tree[pkg] = []
             package_tree[pkg].append(cls.name)
 
-            endpoints = _extract_endpoints(content, cls.name)
+            endpoints = _extract_endpoints(segment, cls.name, _class_mapping_path(cls))
             all_endpoints.extend(endpoints)
 
     # Dependency edges only capture real intra-project dependencies. Imports of
@@ -124,12 +132,175 @@ def _find_java_files(root: str) -> list[str]:
     return java_files
 
 
-def _parse_java_class(content: str, file_path: str, base_path: str) -> JavaClass | None:
+def _parse_java_classes(
+    content: str, file_path: str, base_path: str
+) -> list[tuple[JavaClass, str]]:
+    """Parse every class declared in a Java file, including multiple
+    top-level classes and nested/inner classes (single-file monoliths).
+
+    Each returned pair is (parsed class, source segment). Line numbers on
+    the class (methods, end_line) are file-relative so metrics and the
+    dead-code detector stay consistent with the original file.
+    """
+    masked = _mask_code(content)
+    file_package_match = re.search(r"package\s+([\w.]+);", content)
+    file_package = file_package_match.group(1) if file_package_match else ""
+    file_imports = re.findall(r"import\s+([\w.*]+);", content)
+
+    parsed = []
+    seen_starts = set()
+    for decl_start, brace_open, decl_end in _find_class_declarations(masked):
+        if decl_start in seen_starts:
+            continue
+        seen_starts.add(decl_start)
+
+        body_end = _matching_brace(masked, brace_open)
+        if body_end is None:
+            continue
+
+        segment_start = _annotation_block_start(masked, decl_start)
+        segment = content[segment_start:body_end + 1]
+        segment_start_line = content[:segment_start].count("\n") + 1
+        end_line = content[:body_end].count("\n") + 1
+
+        cls = _parse_java_class(
+            segment,
+            file_path,
+            base_path,
+            package=file_package,
+            imports=file_imports,
+            line_offset=segment_start_line - 1,
+            end_line=end_line,
+            segment_start_line=segment_start_line,
+        )
+        if cls:
+            parsed.append((cls, segment))
+    return parsed
+
+
+def _mask_code(content: str) -> str:
+    """Return content with comments and string literals blanked out (newlines
+    preserved) so brace matching and declaration scanning ignore their text."""
+    result = list(content)
+
+    def _blank(start: int, end: int) -> None:
+        for i in range(start, end):
+            if content[i] != "\n":
+                result[i] = " "
+
+    for m in re.finditer(r"/\*.*?\*/", content, re.DOTALL):
+        _blank(m.start(), m.end())
+    for m in re.finditer(r"//[^\n]*", content):
+        _blank(m.start(), m.end())
+    for m in re.finditer(r'"(?:\\.|[^"\\])*"', content):
+        _blank(m.start(), m.end())
+    for m in re.finditer(r"'(?:\\.|[^'\\])*'", content):
+        _blank(m.start(), m.end())
+    return "".join(result)
+
+
+def _find_class_declarations(masked: str) -> list[tuple[int, int, int]]:
+    """Find every class/interface/enum/record declaration.
+
+    Returns (decl_start, brace_open, decl_end) for each. ``brace_open`` is the
+    position of the body's opening brace, ``decl_end`` the end of the header.
+    Annotation-type declarations (``@interface``) are skipped.
+    """
+    decl_re = re.compile(
+        r"\b(?:public\s+|protected\s+|private\s+|abstract\s+|static\s+|final\s+|sealed\s+|strictfp\s+)*"
+        r"(?:class|interface|enum|record)\s+(\w+)"
+    )
+    found = []
+    for m in decl_re.finditer(masked):
+        if m.start() > 0 and masked[m.start() - 1] == "@":
+            continue
+        brace_open = masked.find("{", m.end())
+        if brace_open == -1:
+            continue
+        found.append((m.start(), brace_open, m.end()))
+    return found
+
+
+def _annotation_block_start(masked: str, decl_start: int) -> int:
+    """Position of the first annotation attached to the class declaration.
+
+    Scans backwards from the class keyword over ``@Word(...)`` tokens so
+    annotations are included in the class segment and attributed to the
+    right class in multi-class files.
+    """
+    i = decl_start - 1
+    ann_start = decl_start
+    while i >= 0:
+        ch = masked[i]
+        if ch in " \t\r\n":
+            i -= 1
+            continue
+        if ch == ")":
+            depth = 1
+            j = i - 1
+            while j >= 0 and depth > 0:
+                if masked[j] == ")":
+                    depth += 1
+                elif masked[j] == "(":
+                    depth -= 1
+                j -= 1
+            if depth > 0:
+                break
+            i = j
+            continue
+        if ch.isalnum() or ch == "_":
+            j = i
+            while j >= 0 and (masked[j].isalnum() or masked[j] == "_"):
+                j -= 1
+            if j >= 0 and masked[j] == "@":
+                ann_start = j
+                i = j - 1
+                continue
+            break
+        break
+    return ann_start
+
+
+def _matching_brace(masked: str, open_pos: int) -> int | None:
+    """Position of the brace matching ``masked[open_pos]`` (must be '{')."""
+    depth = 0
+    for i in range(open_pos, len(masked)):
+        ch = masked[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return i
+    return None
+
+
+def _deduplicate_name(name: str, used: set) -> str:
+    if name not in used:
+        return name
+    n = 2
+    while f"{name}_{n}" in used:
+        n += 1
+    return f"{name}_{n}"
+
+
+def _parse_java_class(
+    content: str,
+    file_path: str,
+    base_path: str,
+    package: str | None = None,
+    imports: list[str] | None = None,
+    line_offset: int = 0,
+    end_line: int = 0,
+    segment_start_line: int = 0,
+) -> JavaClass | None:
     package_match = re.search(r"package\s+([\w.]+);", content)
-    package = package_match.group(1) if package_match else ""
+    package = package if package is not None else (package_match.group(1) if package_match else "")
 
     class_match = re.search(
-        r"(?:public\s+)?(?:abstract\s+)?(?:class|interface|enum)\s+(\w+)", content
+        r"(?:public\s+|protected\s+|private\s+|abstract\s+|static\s+|final\s+|sealed\s+)*"
+        r"(?:class|interface|enum|record)\s+(\w+)",
+        content,
     )
     if not class_match:
         return None
@@ -138,7 +309,7 @@ def _parse_java_class(content: str, file_path: str, base_path: str) -> JavaClass
     lines = content.split("\n")
     loc = len([l for l in lines if l.strip() and not l.strip().startswith("//") and not l.strip().startswith("*")])
 
-    imports = re.findall(r"import\s+([\w.*]+);", content)
+    imports = imports if imports is not None else re.findall(r"import\s+([\w.*]+);", content)
 
     extends = ""
     extends_match = re.search(r"extends\s+(\w+)", content)
@@ -174,14 +345,14 @@ def _parse_java_class(content: str, file_path: str, base_path: str) -> JavaClass
         pattern += r"(?:[\w<>\[\],\s?]+)\s+" + re.escape(m) + r"\s*\([^)]*\)"
         match = re.search(pattern, content)
         if match:
-            start_line = content[: match.start()].count("\n") + 1
+            start_line = content[: match.start()].count("\n") + 1 + line_offset
             method_lines.append({"name": m, "start_line": start_line})
 
     injected_fields = []
     field_deps = []
 
     for inj_match in re.finditer(
-        r"@(?:Autowired|Inject|Resource)\s+(?:private|protected|public)?\s*(\w+(?:<[\w,\s<>]+>)?)\s+(\w+);",
+        r"@(?:Autowired|Inject|Resource)\s+(?:private|protected|public)?\s*(?:final\s+)?(\w+(?:<[\w,\s<>]+>)?)\s+(\w+);",
         content,
     ):
         inj_type = inj_match.group(1).split("<")[0].strip()
@@ -190,7 +361,7 @@ def _parse_java_class(content: str, file_path: str, base_path: str) -> JavaClass
         field_deps.append({"type": inj_type, "name": inj_name, "injection_type": "field"})
 
     for field_match in re.finditer(
-        r"(?:private|protected|public)\s+(?!static|final)(\w+(?:<[\w,\s<>]+>)?)\s+(\w+)\s*[=;]",
+        r"(?:private|protected|public)\s+(?:final\s+)?(?!static)(\w+(?:<[\w,\s<>]+>)?)\s+(\w+)\s*[=;]",
         content,
     ):
         f_type = field_match.group(1).split("<")[0].strip()
@@ -207,13 +378,34 @@ def _parse_java_class(content: str, file_path: str, base_path: str) -> JavaClass
         if const_type not in injected_fields and const_type not in [name]:
             field_deps.append({"type": const_type, "name": const_name, "injection_type": "constant"})
 
+    # Constructor injection: Spring resolves the constructor parameters as
+    # dependencies. In single-file monoliths there are no imports for sibling
+    # classes, so constructor params are the only signal of coupling.
+    ctor_match = re.search(
+        r"(?:public|protected|private)?\s*(?:final\s+)?(?:\w+\s+)*?" + re.escape(name) + r"\s*\(([^)]*)\)",
+        content,
+    )
+    if ctor_match:
+        for param in ctor_match.group(1).split(","):
+            param = param.strip()
+            pm = re.match(r"(?:final\s+)?([\w.]+(?:<[^>]*>)?)\s+\w+\s*$", param)
+            if not pm:
+                continue
+            ptype = pm.group(1)
+            dep_types = [ptype.split("<")[0].strip()]
+            dep_types += re.findall(r"<([\w.]+)", ptype)
+            for t in dep_types:
+                if t and t != name and t not in injected_fields:
+                    injected_fields.append(t)
+                    field_deps.append({"type": t, "name": "", "injection_type": "constructor"})
+
     deps = []
     for imp in imports:
         class_name = imp.split(".")[-1]
         if class_name != "*":
             deps.append(class_name)
 
-    all_deps = list(set(deps + injected_fields))
+    all_deps = list(set(deps + injected_fields + [f["type"] for f in field_deps]))
 
     is_entity = bool(re.search(r"@(?:Entity|Table|Document)(?!\w)", content))
     is_controller = bool(re.search(r"@(?:RestController|Controller)(?!Advice)", content))
@@ -244,10 +436,27 @@ def _parse_java_class(content: str, file_path: str, base_path: str) -> JavaClass
         is_interface=is_interface,
         is_abstract=is_abstract,
         annotations_with_params=annotations_with_params,
+        end_line=end_line,
+        segment_start_line=segment_start_line,
     )
 
 
-def _extract_endpoints(content: str, class_name: str) -> list[APIEndpoint]:
+def _class_mapping_path(cls: JavaClass) -> str:
+    """Extract the class-level @RequestMapping prefix (e.g. ``/users``)."""
+    params = (cls.annotations_with_params or {}).get("RequestMapping", "") or ""
+    match = re.search(r"[\"']([^\"']+)[\"']", params)
+    return match.group(1) if match else ""
+
+
+def _join_endpoint_path(prefix: str, suffix: str) -> str:
+    """Compose a class-level mapping prefix and a method path into a URL path."""
+    parts = [p.strip("/") for p in (prefix, suffix) if p and p.strip("/")]
+    if not parts:
+        return "/"
+    return "/" + "/".join(parts)
+
+
+def _extract_endpoints(content: str, class_name: str, class_path: str = "") -> list[APIEndpoint]:
     endpoints = []
 
     mapping_annotations = {
@@ -262,21 +471,36 @@ def _extract_endpoints(content: str, class_name: str) -> list[APIEndpoint]:
     for ann, method in mapping_annotations.items():
         # Match the mapping annotation (string, named arg, or array of paths)
         # together with the handler method that immediately follows it
-        # (allowing for intervening parameter annotations).
+        # (allowing for intervening parameter annotations). Parentheses are
+        # optional: a bare @GetMapping/@PostMapping without an explicit path
+        # resolves to the class-level @RequestMapping prefix (or "/").
         pattern = re.compile(
-            rf"@{ann}\s*\((?P<args>[^)]*)\)"
+            rf"@{ann}\s*(?:\((?P<args>[^)]*)\))?"
             rf"(?:\s*\n\s*@\w+(?:\([^)]*\))?)*"
             rf"\s*\n\s*(?:public|protected|private)\s+[\w<>\[\],\s?]+\s+(?P<handler>\w+)\s*\("
         )
         for match in pattern.finditer(content):
-            paths = re.findall(r"[\"']([^\"']+)[\"']", match.group("args"))
+            args = match.group("args") or ""
+            paths = re.findall(r"[\"']([^\"']+)[\"']", args)
             if not paths:
+                # No explicit path on the annotation: the endpoint is the
+                # class-level mapping prefix itself (or "/" when none exists),
+                # so it must not be joined onto the prefix again.
+                endpoints.append(
+                    APIEndpoint(
+                        method=method,
+                        path=class_path or "/",
+                        handler_class=class_name,
+                        handler_method=match.group("handler"),
+                        annotations=[ann],
+                    )
+                )
                 continue
             for path in paths:
                 endpoints.append(
                     APIEndpoint(
                         method=method,
-                        path=path,
+                        path=_join_endpoint_path(class_path, path),
                         handler_class=class_name,
                         handler_method=match.group("handler"),
                         annotations=[ann],
@@ -310,7 +534,7 @@ def _calculate_metrics(classes: list[JavaClass], class_contents: dict | None = N
             continue
         for i, m in enumerate(c.method_lines):
             start = m["start_line"]
-            end = c.method_lines[i + 1]["start_line"] if i + 1 < len(c.method_lines) else c.lines_of_code
+            end = c.method_lines[i + 1]["start_line"] if i + 1 < len(c.method_lines) else (c.end_line or c.lines_of_code)
             method_len = end - start
             if method_len > 30:
                 long_methods.append({
@@ -326,7 +550,7 @@ def _calculate_metrics(classes: list[JavaClass], class_contents: dict | None = N
             continue
         for i, m in enumerate(c.method_lines):
             start = m["start_line"]
-            end = c.method_lines[i + 1]["start_line"] if i + 1 < len(c.method_lines) else c.lines_of_code
+            end = c.method_lines[i + 1]["start_line"] if i + 1 < len(c.method_lines) else (c.end_line or c.lines_of_code)
             all_complexities.append(end - start)
     avg_complexity = round(sum(all_complexities) / len(all_complexities), 1) if all_complexities else 0
 
@@ -338,7 +562,7 @@ def _calculate_metrics(classes: list[JavaClass], class_contents: dict | None = N
             continue
         for i, m in enumerate(c.method_lines):
             start = m["start_line"]
-            end = c.method_lines[i + 1]["start_line"] if i + 1 < len(c.method_lines) else c.lines_of_code
+            end = c.method_lines[i + 1]["start_line"] if i + 1 < len(c.method_lines) else (c.end_line or c.lines_of_code)
             body_len = end - start
             total_method_lines += body_len
             if body_len >= 5:
@@ -364,6 +588,7 @@ def _calculate_metrics(classes: list[JavaClass], class_contents: dict | None = N
         "total_lines": total_loc,
         "total_classes": total_classes,
         "total_methods": total_methods,
+        "total_endpoints": len(endpoints) if endpoints is not None else 0,
         "avg_cyclomatic_complexity": avg_complexity,
         "god_classes": god_classes,
         "duplicate_lines_percent": duplicate_lines_percent,
@@ -482,7 +707,7 @@ def _detect_dead_code(classes, class_contents, endpoints) -> dict:
             "name": c.name,
             "package": c.package,
             "file": c.file_path,
-            "line": _symbol_line(contents.get(c.name, ""), c.name),
+            "line": (_symbol_line(contents.get(c.name, ""), c.name) or 0) + (c.segment_start_line or 1) - 1,
             "type": "class",
             "reason": "Class is not referenced by any other class in the project",
             "incoming_references": 0,
@@ -511,7 +736,7 @@ def _detect_dead_code(classes, class_contents, endpoints) -> dict:
             parent = class_map[parent.extends]
             override_names.update(m["name"] for m in parent.method_lines)
         method_starts = sorted(m["start_line"] for m in c.method_lines if m["start_line"])
-        content_line_count = len(content.split("\n")) if content else c.lines_of_code
+        content_line_count = c.end_line or (len(content.split("\n")) if content else c.lines_of_code)
 
         def _method_loc(start_line):
             if start_line is None or start_line not in method_starts:
@@ -526,14 +751,14 @@ def _detect_dead_code(classes, class_contents, endpoints) -> dict:
                 continue
             if mname in override_names or re.match(r"^(get|set|is|has)", mname):
                 continue
-            if _method_annotations(content, m["start_line"]) & {"Override", "Scheduled", "EventListener", "PostConstruct", "PreDestroy", "Bean", "ExceptionHandler"}:
+            if _method_annotations(content, m["start_line"] - (c.segment_start_line or 1) + 1) & {"Override", "Scheduled", "EventListener", "PostConstruct", "PreDestroy", "Bean", "ExceptionHandler"}:
                 continue
             if m["start_line"] is None:
                 continue
             total = _count_invocations(mname, contents)
             if total > 1:
                 continue
-            is_private = _is_private_line(content, m["start_line"])
+            is_private = _is_private_line(content, m["start_line"] - (c.segment_start_line or 1) + 1)
             dead_methods.append({
                 "name": mname,
                 "class": c.name,
@@ -550,7 +775,7 @@ def _detect_dead_code(classes, class_contents, endpoints) -> dict:
 
         for f in c.fields:
             fname = f["name"]
-            if f.get("injection_type") == "field":
+            if f.get("injection_type") in ("field", "constructor"):
                 continue
             if fname == "serialVersionUID":
                 continue
@@ -563,7 +788,7 @@ def _detect_dead_code(classes, class_contents, endpoints) -> dict:
                 "class": c.name,
                 "package": c.package,
                 "file": c.file_path,
-                "line": _symbol_line(content, fname),
+                "line": (_symbol_line(content, fname) or 0) + (c.segment_start_line or 1) - 1,
                 "type": "field",
                 "reason": "Field is never referenced outside its own declaration",
                 "incoming_references": total - 1,
@@ -618,6 +843,8 @@ def _method_annotations(content, start_line):
     if not content or not start_line:
         return annotations
     lines = content.split("\n")
+    if start_line - 2 >= len(lines) or start_line - 2 < 0:
+        return annotations
     i = start_line - 2
     while i >= 0:
         stripped = lines[i].strip()

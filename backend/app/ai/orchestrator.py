@@ -33,6 +33,19 @@ def get_ai_service() -> AIService:
     return _service
 
 
+def _resolved_model_id(metadata: dict, default: str = "deterministic-fallback") -> str:
+    """Report which model actually produced a result.
+
+    AI metadata carries the real model id only when a provider invocation
+    succeeded. When the pipeline fell back to deterministic logic (provider
+    error or no model), claiming the model id would mislabel the output, so
+    the deterministic label is used instead.
+    """
+    if metadata.get("used_fallback") or metadata.get("error"):
+        return default
+    return metadata.get("model_id") or default
+
+
 def _apply_graph_boundary_metrics(services: list[dict], edges: list[dict]) -> None:
     """Overwrite AI/provided cohesion & coupling with graph-grounded values.
 
@@ -353,7 +366,13 @@ def analyze_service_boundaries(analysis_data: dict) -> dict:
     _resolve_class_ownership(services, class_by_name)
     # Re-cluster every class onto the dependency-grounded boundary it actually
     # belongs to; the AI's class lists are only used to seed the boundaries.
-    _deterministic_recluster(services, class_by_name)
+    # This repair is only meaningful when boundaries came from AI candidates —
+    # domain-derived boundaries already carry full DDD chains grounded in the
+    # dependency graph, and re-running it on them collapses single-package
+    # monoliths into one service (the reassignment cascade favours the
+    # largest boundary).
+    if not domains:
+        _deterministic_recluster(services, class_by_name)
     _merge_singleton_boundaries(services, class_by_name)
     # Config/test/exception classes are not domain code; exclude them from the
     # service boundaries so no domain is polluted by infrastructure.
@@ -386,7 +405,7 @@ def analyze_service_boundaries(analysis_data: dict) -> dict:
         "services": services,
         "total_services": len(services),
         "business_capabilities": final_caps[: _profile().orchestrator_max_business_caps],
-        "_model_id": metadata.get("model_id", "sprint3-deterministic"),
+        "_model_id": _resolved_model_id(metadata),
     }
 
 
@@ -424,16 +443,21 @@ def _assign_unassigned_classes(services: list[dict], class_by_name: dict) -> Non
         deps = {d for d in deps if d in class_by_name}
         pkg = cls.get("package", "")
 
-        best: dict | None = None
-        best_score = (-1, -1, -1)
-        for svc in services:
+        # Maximise dependency affinity, then break ties by the SMALLEST
+        # boundary so support/framework classes (which often have no project
+        # deps at all) are spread across boundaries instead of all piling into
+        # the first one and turning it into a gravity well for later reclustering.
+        def _score(svc: dict) -> tuple:
             names = set(svc.get("classes", []) or [])
             dep_overlap = len(deps & names)
             reverse = sum(1 for n in names if cn in _class_deps(class_by_name[n]))
-            pkg_overlap = sum(1 for n in names if class_by_name.get(n, {}).get("package", "") == pkg)
-            score = (dep_overlap, reverse, pkg_overlap)
-            if score > best_score:
-                best, best_score = svc, score
+            pkg_frac = (
+                sum(1 for n in names if class_by_name.get(n, {}).get("package", "") == pkg)
+                / max(1, len(names))
+            )
+            return (-dep_overlap, -reverse, -pkg_frac, len(names))
+
+        best = min(services, key=_score) if services else None
 
         if best is None:
             best = next((s for s in services if s.get("name") == "CommonService"), None)
@@ -611,11 +635,11 @@ def _deterministic_recluster(services: list[dict], class_by_name: dict) -> None:
         deps.update(cls.get("injected_fields", []) or [])
         return {d for d in deps if d in class_by_name}
 
-    def _affinity(cn: str, idx: int) -> int:
+    def _affinity(cn: str, idx: int) -> float:
         names = set(services[idx].get("classes", []) or [])
         names.discard(cn)
         if not names:
-            return 0
+            return 0.0
         deps = _class_deps_of(cn)
         dep_overlap = len(deps & names)
         reverse = sum(
@@ -623,7 +647,10 @@ def _deterministic_recluster(services: list[dict], class_by_name: dict) -> None:
         )
         pkg = class_by_name.get(cn, {}).get("package", "")
         pkg_overlap = sum(1 for n in names if class_by_name.get(n, {}).get("package", "") == pkg)
-        return dep_overlap * 3 + reverse * 2 + pkg_overlap
+        # Normalise by boundary size so a large boundary cannot out-attract
+        # classes from smaller ones just by having more members (this is what
+        # collapsed single-package monoliths into one all-encompassing service).
+        return (dep_overlap * 3 + reverse * 2 + pkg_overlap) / len(names)
 
     for _ in range(10):
         moved = 0
@@ -973,14 +1000,19 @@ def generate_adrs(analysis_data: dict, boundaries: list[dict]) -> dict:
     """Generate ADRs — AI-powered with fallback.
 
     Feeds the actual detected service boundaries (with classes, endpoints,
-    capabilities) into the ADR prompt so records reference real code.
+    capabilities) into the ADR prompt so records reference real code. The
+    resolved model id is returned via ``_model_id`` so callers can label the
+    records honestly (AI model vs deterministic fallback).
     """
     service = get_ai_service()
     if boundaries:
         analysis_data = dict(analysis_data)
         analysis_data["candidate_services"] = boundaries
     adrs, metadata = service.generate_adrs(analysis_data)
-    return {"adrs": [a.to_dict() for a in adrs]}
+    model_id = _resolved_model_id(metadata)
+    for adr in adrs:
+        adr.model_id = model_id
+    return {"adrs": [a.to_dict() for a in adrs], "_model_id": model_id}
 
 
 def _risk_level(svc: dict, default_confidence: float = 50) -> str:

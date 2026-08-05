@@ -16,7 +16,9 @@ export default function ReportsPage() {
     queryKey: ['jobs'], queryFn: listJobs, staleTime: 30000,
   });
 
-  const completedJobs = (jobsData?.jobs || []).filter((j) => j.status === 'analysis_complete');
+  const completedJobs = (jobsData?.jobs || []).filter((j) =>
+    ['analysis_complete', 'generation_complete', 'generation_with_warnings'].includes(j.status)
+  );
   const latestJob = completedJobs[0];
 
   const { data: results, isLoading: resultsLoading } = useQuery({

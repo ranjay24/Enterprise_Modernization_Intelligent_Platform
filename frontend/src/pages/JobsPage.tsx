@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, FolderOpen, Loader2, CheckCircle, XCircle, Clock, Brain, Percent, LayoutDashboard, FileText, GitBranch, Trash2, Play, BarChart3 } from 'lucide-react';
@@ -109,12 +109,27 @@ export default function JobsPage() {
   const [drawerJob, setDrawerJob] = useState<JobDetail | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const { data: apiData, isLoading } = useQuery({
+  const { data: apiData, isLoading, refetch } = useQuery({
     queryKey: ['jobs'],
     queryFn: listJobs,
-    staleTime: 6000,
-    refetchInterval: 3000,
+    staleTime: 0,
+    refetchInterval: (q) => {
+      const jobs = q.state.data?.jobs || [];
+      const hasRunning = jobs.some(j => ['queued', 'uploading', 'validating', 'analyzing', 'ai_processing', 'generating', 'generating_report', 'paused'].includes(j.status));
+      return hasRunning ? 1000 : 30000; // Poll faster when running, slower when idle
+    },
   });
+
+  // Force refetch when page becomes visible (user switches tabs back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refetch();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [refetch]);
 
   const pauseMutation = useMutation({
     mutationFn: pauseJob,
@@ -155,8 +170,8 @@ export default function JobsPage() {
     return filtered;
   }, [allJobs, search, statusFilter]);
 
-  const activeJobs = useMemo(() => filteredJobs.filter((j) => ['queued', 'uploading', 'validating', 'analyzing', 'ai_processing', 'generating_report', 'paused'].includes(j.status)), [filteredJobs]);
-  const completedJobs = useMemo(() => filteredJobs.filter((j) => j.status === 'completed'), [filteredJobs]);
+  const activeJobs = useMemo(() => filteredJobs.filter((j) => ['queued', 'uploading', 'validating', 'analyzing', 'ai_processing', 'generating', 'generating_report', 'paused'].includes(j.status)), [filteredJobs]);
+  const completedJobs = useMemo(() => filteredJobs.filter((j) => ['analysis_complete', 'generation_complete', 'generation_with_warnings', 'completed'].includes(j.status)), [filteredJobs]);
   const failedJobs = useMemo(() => filteredJobs.filter((j) => j.status === 'failed'), [filteredJobs]);
 
   const summary = useMemo(() => {

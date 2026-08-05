@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, BarChart3, Sparkles } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useResultsData } from '@/hooks/useResultsData';
 import { formatConfidence } from '@/utils/formatters';
 import { ExecutiveSummary } from '@/components/results/ExecutiveSummary';
@@ -23,6 +24,7 @@ import { Badge } from '@/components/ui/Badge';
 
 export default function ResultsPage() {
   const { jobId } = useParams<{ jobId: string }>();
+  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useResultsData(jobId);
 
   if (isLoading) {
@@ -38,7 +40,7 @@ export default function ResultsPage() {
   if (isError || !data) {
     return (
       <div className="p-6 lg:p-8 max-w-[1440px] mx-auto">
-        <Link to="/jobs" className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] mb-6">
+        <Link to="/jobs" onClick={() => queryClient.invalidateQueries({ queryKey: ['jobs'] })} className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] mb-6">
           <ArrowLeft className="w-4 h-4" /> Back to Jobs
         </Link>
         <div className="text-center py-20">
@@ -62,6 +64,7 @@ export default function ResultsPage() {
       {/* Top nav */}
       <Link
         to="/jobs"
+        onClick={() => queryClient.invalidateQueries({ queryKey: ['jobs'] })}
         className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors w-fit"
       >
         <ArrowLeft className="w-4 h-4" /> Back to Jobs

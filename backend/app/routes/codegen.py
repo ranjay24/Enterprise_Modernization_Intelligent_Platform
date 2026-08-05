@@ -27,6 +27,7 @@ def _is_local() -> bool:
 
 def _run_codegen_sync(job_id: str):
     """Run the codegen loop in-process (local dev fallback)."""
+    job_repo = JobRepository()
     try:
         orchestrator = CodeGenOrchestrator(progress_callback=_progress_callback)
         orchestrator.run(job_id)
@@ -34,6 +35,7 @@ def _run_codegen_sync(job_id: str):
         entry["status"] = "generation_complete"
         entry["progress"] = 100
         entry["current_stage"] = "finalize"
+        job_repo.update_job(job_id=job_id, status="generation_complete", current_phase="code_generation", progress=100)
     except Exception as exc:
         logger.error("codegen_sync_failed", job_id=job_id, error=str(exc))
         _active_generations[job_id] = {
@@ -42,7 +44,7 @@ def _run_codegen_sync(job_id: str):
             "error": str(exc),
         }
         try:
-            JobRepository().update_job(job_id=job_id, status="failed", error=f"Code generation failed: {exc}")
+            job_repo.update_job(job_id=job_id, status="failed", error=f"Code generation failed: {exc}")
         except Exception:
             pass
 
@@ -87,14 +89,23 @@ async def start_code_generation(job_id: str):
 async def codegen_status(job_id: str):
     validate_job_id(job_id)
     repo = ArtifactRepository()
+    job_repo = JobRepository()
 
     summary = repo.load_content(job_id, "codegen_summary")
     review = repo.load_content(job_id, "review_report")
     plan = repo.load_content(job_id, "codegen_plan")
 
-    progress = _active_generations.get(job_id, {}).get("progress", 0)
-    current_stage = _active_generations.get(job_id, {}).get("current_stage", "idle")
-    in_progress = _active_generations.get(job_id, {}).get("status") == "generating"
+    # If summary exists, generation is complete - ensure job status reflects it
+    if summary and summary.get("status") in ("generation_complete", "generation_with_warnings"):
+        job = job_repo.get_job(job_id)
+        if job and job.status != summary.get("status"):
+            job_repo.update_job(job_id=job_id, status=summary.get("status"), progress=100)
+
+    # Check job database status
+    job = job_repo.get_job(job_id)
+    in_progress = job.status == "generating" if job else False
+    progress = _active_generations.get(job_id, {}).get("progress", 100 if not in_progress else 0)
+    current_stage = _active_generations.get(job_id, {}).get("current_stage", "finalize" if summary else "idle")
 
     service_codes = []
     if plan:
@@ -119,9 +130,8 @@ async def codegen_architecture(job_id: str):
     validate_job_id(job_id)
     repo = ArtifactRepository()
     design = repo.load_content(job_id, "architecture_design")
-    if not design:
-        raise ResourceNotFoundException("Architecture design", job_id)
-    return design
+    # Return empty structure if not found (in progress or not generated yet)
+    return design or {"version": "1.0.0", "services": [], "nodes": [], "edges": [], "message_topology": {"topics": [], "queues": []}}
 
 
 @router.get("/codegen/{job_id}/plan")
@@ -129,9 +139,8 @@ async def codegen_plan(job_id: str):
     validate_job_id(job_id)
     repo = ArtifactRepository()
     plan = repo.load_content(job_id, "codegen_plan")
-    if not plan:
-        raise ResourceNotFoundException("Code generation plan", job_id)
-    return plan
+    # Return empty structure if not found
+    return plan or {"version": "1.0.0", "waves": [], "services": {}, "global_config": {}}
 
 
 @router.get("/codegen/{job_id}/code")
@@ -166,6 +175,5 @@ async def codegen_review(job_id: str):
     validate_job_id(job_id)
     repo = ArtifactRepository()
     review = repo.load_content(job_id, "review_report")
-    if not review:
-        raise ResourceNotFoundException("Review report", job_id)
-    return review
+    # Return empty report if not found
+    return review or {"service_id": "", "iteration": 0, "approved": False, "summary": "Review pending", "score": 0, "findings": []}

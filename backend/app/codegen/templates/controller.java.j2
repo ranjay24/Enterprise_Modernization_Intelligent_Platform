@@ -1,0 +1,42 @@
+package {{ base_package }}.web;
+
+import {{ base_package }}.service.{{ service_class }};
+import {{ base_package }}.web.dto.{{ dto_class }};
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("{{ base_path }}")
+public class {{ controller_class }} {
+
+    private final {{ service_class }} {{ service_var }};
+
+    public {{ controller_class }}({{ service_class }} {{ service_var }}) {
+        this.{{ service_var }} = {{ service_var }};
+    }
+
+    @GetMapping
+    public ResponseEntity<List<{{ dto_class }}>> list() {
+        return ResponseEntity.ok({{ service_var }}.findAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<{{ dto_class }}> get(@PathVariable Long id) {
+        return ResponseEntity.ok({{ service_var }}.findById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<{{ dto_class }}> create(@Valid @RequestBody {{ dto_class }} request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body({{ service_var }}.save(request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        {{ service_var }}.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}

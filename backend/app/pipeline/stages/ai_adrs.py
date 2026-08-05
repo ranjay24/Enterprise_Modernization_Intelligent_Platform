@@ -35,7 +35,8 @@ class AIADRStage(BaseAIStage):
             analysis_data["sprint2_analysis"] = enterprise
         services = context.get_result_data("ai_boundaries").get("services", [])
         result = ai_orchestrator.generate_adrs(analysis_data, services)
-        return result, "sprint3-deterministic"
+        model_id = result.pop("_model_id", "deterministic-fallback")
+        return result, model_id
 
     def fallback(self) -> dict:
         return {"adrs": []}

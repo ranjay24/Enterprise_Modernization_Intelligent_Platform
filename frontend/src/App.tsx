@@ -7,6 +7,8 @@ import AnalysisPage from '@/pages/AnalysisPage';
 import ResultsPage from '@/pages/ResultsPage';
 import JobsPage from '@/pages/JobsPage';
 import ArchitecturePage from '@/pages/ArchitecturePage';
+import ModernizationStudioPage from '@/pages/ModernizationStudioPage';
+import StudioIndexPage from '@/pages/StudioIndexPage';
 import MigrationPlannerPage from '@/pages/MigrationPlannerPage';
 import ReportsPage from '@/pages/ReportsPage';
 import SettingsPage from '@/pages/SettingsPage';
@@ -32,7 +34,10 @@ export default function App() {
             <Route path="/jobs" element={<JobsPage />} />
             <Route path="/jobs/:jobId" element={<AnalysisPage />} />
             <Route path="/jobs/:jobId/results" element={<ResultsPage />} />
+            <Route path="/jobs/:jobId/studio" element={<ModernizationStudioPage />} />
             <Route path="/architecture" element={<ArchitecturePage />} />
+            <Route path="/studio" element={<StudioIndexPage />} />
+            <Route path="/jobs/:jobId/studio" element={<ModernizationStudioPage />} />
             <Route path="/migration" element={<MigrationPlannerPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/settings" element={<SettingsPage />} />

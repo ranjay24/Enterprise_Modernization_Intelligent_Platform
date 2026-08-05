@@ -25,10 +25,11 @@ class DependencyGraphAnalyzer(Analyzer):
 
     def analyze(self, context: AnalysisContext) -> AnalysisContext:
         classes = context.parsed_classes
-        class_map = {c.name: c for c in classes}
+        all_types = context.parsed_classes + context.parsed_interfaces + context.parsed_enums
+        class_map = {c.name: c for c in all_types}
 
         edges = []
-        for c in classes:
+        for c in all_types:
             for dep in c.dependencies:
                 if dep in class_map:
                     edge_type = "injection" if dep in c.injected_fields else "import"
@@ -38,7 +39,7 @@ class DependencyGraphAnalyzer(Analyzer):
         injection_cycles = self._detect_cycles(class_map, use_injections=True)
         all_cycles = self._dedup_cycles(import_cycles + injection_cycles)
 
-        package_deps = self._build_package_dependencies(classes)
+        package_deps = self._build_package_dependencies(classes, class_map)
         package_circular = self._detect_package_cycles(package_deps)
 
         highly_coupled = self._find_highly_coupled(classes, class_map)
@@ -64,9 +65,13 @@ class DependencyGraphAnalyzer(Analyzer):
 
         context.dependency_graph = graph
         context.circular_dependencies = all_cycles
+
+        def _project_dep_count(c) -> int:
+            return sum(1 for d in c.dependencies if d in class_map)
+
         context.coupling_analysis = {
-            "avg_dependencies": round(sum(len(c.dependencies) for c in classes) / len(classes), 1) if classes else 0,
-            "max_dependencies": max((len(c.dependencies) for c in classes), default=0),
+            "avg_dependencies": round(sum(_project_dep_count(c) for c in classes) / len(classes), 1) if classes else 0,
+            "max_dependencies": max((_project_dep_count(c) for c in classes), default=0),
             "highly_coupled_count": len(highly_coupled),
             "circular_cycle_count": len(all_cycles),
         }
@@ -130,14 +135,14 @@ class DependencyGraphAnalyzer(Analyzer):
                 result.append(cycle)
         return result
 
-    def _build_package_dependencies(self, classes) -> dict[str, set[str]]:
+    def _build_package_dependencies(self, classes, class_map: dict) -> dict[str, set[str]]:
         pkg_deps: dict[str, set[str]] = {}
         for c in classes:
             src_pkg = c.package or "default"
             for dep_name in c.dependencies:
-                for c2 in classes:
-                    if c2.name == dep_name and c2.package != src_pkg:
-                        pkg_deps.setdefault(src_pkg, set()).add(c2.package or "default")
+                target = class_map.get(dep_name)
+                if target is not None and (target.package or "default") != src_pkg:
+                    pkg_deps.setdefault(src_pkg, set()).add(target.package or "default")
         return {k: list(v) for k, v in pkg_deps.items()}
 
     def _detect_package_cycles(self, pkg_deps: dict[str, list[str]]) -> list[dict]:
@@ -172,7 +177,7 @@ class DependencyGraphAnalyzer(Analyzer):
     def _find_highly_coupled(self, classes, class_map: dict) -> list[dict]:
         coupled = []
         for c in classes:
-            dep_count = len(c.dependencies)
+            dep_count = sum(1 for d in c.dependencies if d in class_map)
             inj_count = len(c.injected_fields)
             if dep_count > 10 or inj_count > 5:
                 coupled.append({

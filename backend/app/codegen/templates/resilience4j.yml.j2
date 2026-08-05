@@ -1,0 +1,35 @@
+resilience4j:
+  retry:
+    instances:
+      default:
+        maxAttempts: {{ retry.max_attempts }}
+        waitDuration: {{ retry.backoff_ms }}ms
+        retryExceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.io.IOException
+  circuitbreaker:
+    instances:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: {{ circuit_breaker.failure_rate_threshold }}
+        waitDurationInOpenState: {{ circuit_breaker.wait_duration_seconds }}s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+  ratelimiter:
+    instances:
+      default:
+        limitForPeriod: {{ rate_limiter.limit_for_period }}
+        limitRefreshPeriod: {{ rate_limiter.limit_refresh_period_seconds }}s
+        timeoutDuration: 1s
+  timelimiter:
+    instances:
+      default:
+        timeoutDuration: {{ time_limiter.timeout_duration_seconds }}s
+        cancelRunningFuture: true
+  bulkhead:
+    instances:
+      default:
+        maxConcurrentCalls: {{ bulkhead.max_concurrent_calls }}
+        maxWaitDuration: 0s

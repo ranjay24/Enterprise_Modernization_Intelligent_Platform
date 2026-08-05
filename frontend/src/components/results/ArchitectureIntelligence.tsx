@@ -4,7 +4,7 @@ import { HealthCard } from '@/components/cards/HealthCard';
 import { ReadinessBadge, RiskBadge } from '@/components/cards';
 import type { AnalysisResult } from '@/types/api';
 import type { HealthMetric } from '@/types/dashboard';
-import { getScore } from '@/utils/formatters';
+import { getScore, getHealthStatus } from '@/utils/formatters';
 
 function computeHealthMetrics(analysis: AnalysisResult): HealthMetric[] {
   const godClasses = (analysis.metrics?.god_classes || []) as any[];
@@ -18,6 +18,9 @@ function computeHealthMetrics(analysis: AnalysisResult): HealthMetric[] {
   const avgCoupling = services.length > 0
     ? Math.round(services.reduce((s, svc) => s + svc.coupling_score, 0) / services.length)
     : 0;
+  const archQualityScore = getScore(analysis.readiness?.architecture);
+  const techDebtScore = Math.min(100, godClasses.length * 25 + circularDeps.length * 15 + deadCode.length * 3);
+
   return [
     {
       id: 'candidates', title: 'Microservice Candidates', value: services.filter((s) => s.readiness === 'green').length,
@@ -30,18 +33,18 @@ function computeHealthMetrics(analysis: AnalysisResult): HealthMetric[] {
       description: `${circularDeps.length} circular dependencies detected`, icon: 'Link',
     },
     {
-      id: 'arch-quality', title: 'Architecture Quality', value: getScore(analysis.readiness?.architecture),
-      maxValue: 100, unit: '/100', status: 'warning',
+      id: 'arch-quality', title: 'Architecture Quality', value: archQualityScore,
+      maxValue: 100, unit: '/100', status: getHealthStatus('arch-quality', archQualityScore),
       description: 'Overall architectural soundness', icon: 'Layout',
     },
     {
       id: 'maintainability', title: 'Maintainability Index', value: avgCohesion,
-      maxValue: 100, unit: '/100', status: avgCohesion >= 70 ? 'healthy' : avgCohesion >= 40 ? 'warning' : 'critical',
+      maxValue: 100, unit: '/100', status: getHealthStatus('maintainability', avgCohesion),
       description: `Average cohesion: ${avgCohesion}%`, icon: 'Wrench',
     },
     {
-      id: 'tech-debt', title: 'Technical Debt Score', value: Math.min(100, godClasses.length * 25 + circularDeps.length * 15 + deadCode.length * 3),
-      maxValue: 100, unit: '/100', status: 'warning',
+      id: 'tech-debt', title: 'Technical Debt Score', value: techDebtScore,
+      maxValue: 100, unit: '/100', status: getHealthStatus('tech-debt', techDebtScore),
       description: `${godClasses.length} god classes, ${circularDeps.length} cycles`, icon: 'AlertTriangle',
     },
     {

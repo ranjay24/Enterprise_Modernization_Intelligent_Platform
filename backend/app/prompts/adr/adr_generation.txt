@@ -56,8 +56,8 @@ REQUIRED ADR CATEGORIES:
 5. Deployment and infrastructure decisions
 
 RULES:
-1. Each ADR must reference specific code evidence
-2. Context must mention actual god classes or circular dependencies by name
+1. Each ADR must reference specific code evidence from the SERVICE BOUNDARIES above
+2. Only mention god classes, circular dependencies, dead code, or code smells if they appear in KEY RISKS — never invent them
 3. Tradeoffs must be balanced — include real downsides
 4. Alternatives must be viable options that were considered
 

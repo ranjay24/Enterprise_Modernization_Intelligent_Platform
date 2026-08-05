@@ -1,0 +1,55 @@
+package {{ base_package }}.service;
+
+import {{ base_package }}.domain.{{ entity_class }};
+import {{ base_package }}.repository.{{ repository_class }};
+import {{ base_package }}.web.dto.{{ dto_class }};
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@Transactional
+public class {{ service_class }} {
+
+    private final {{ repository_class }} repository;
+
+    public {{ service_class }}({{ repository_class }} repository) {
+        this.repository = repository;
+    }
+
+    public List<{{ dto_class }}> findAll() {
+        return repository.findAll().stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public {{ dto_class }} findById(Long id) {
+        return repository.findById(id).map(this::toDto)
+                .orElseThrow(() -> new IllegalArgumentException("Entity not found: " + id));
+    }
+
+    public {{ dto_class }} save({{ dto_class }} dto) {
+        {{ entity_class }} entity = toEntity(dto);
+        return toDto(repository.save(entity));
+    }
+
+    public void delete(Long id) {
+        repository.deleteById(id);
+    }
+
+    private {{ dto_class }} toDto({{ entity_class }} entity) {
+        {{ dto_class }} dto = new {{ dto_class }}();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        return dto;
+    }
+
+    private {{ entity_class }} toEntity({{ dto_class }} dto) {
+        {{ entity_class }} entity = new {{ entity_class }}();
+        entity.setId(dto.getId());
+        entity.setName(dto.getName());
+        return entity;
+    }
+}

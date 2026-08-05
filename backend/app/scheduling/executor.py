@@ -234,6 +234,12 @@ class ParallelExecutor:
                     continue
 
                 context.state.mark_started(stage_name)
+                if progress_callback:
+                    try:
+                        pct = min(95, int((completed_count / total_stages) * 95))
+                        progress_callback(job_id, pct, stage_name)
+                    except Exception:
+                        pass
 
             stages_executing = [s for s in stages_to_run if s in context.state.stages and context.state.stages[s].status == PipelineStatus.STARTED]
 

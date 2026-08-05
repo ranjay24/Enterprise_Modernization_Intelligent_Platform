@@ -66,13 +66,14 @@ class AnalysisEngine:
         )
 
         ordered = self._sorted_analyzers()
+        completed_analyzers: set[str] = set()
         phases_completed: list[str] = []
 
         for analyzer in ordered:
             meta = analyzer.metadata()
             phase_name = meta.phase.value
 
-            if context.has_phase(phase_name):
+            if meta.name in completed_analyzers:
                 continue
 
             if not analyzer.supports(context):
@@ -94,6 +95,7 @@ class AnalysisEngine:
             try:
                 context = analyzer.analyze(context)
                 context.set_phase(phase_name)
+                completed_analyzers.add(meta.name)
                 phases_completed.append(phase_name)
 
                 self._event_bus.emit(
@@ -115,6 +117,7 @@ class AnalysisEngine:
 
         duration_ms = round((time.time() - start) * 1000, 2)
         memory_mb = round(peak_memory / (1024 * 1024), 2)
+        phases_completed = list(dict.fromkeys(phases_completed))
 
         result = self._build_result(context, phases_completed, duration_ms, memory_mb)
 
@@ -153,6 +156,7 @@ class AnalysisEngine:
                 "total": len(context.risk_findings),
             },
             dependency_graph=context.dependency_graph or {},
+            coupling_analysis=context.coupling_analysis or {},
             architecture_graph=context.graph_data.get("architecture", {}),
             candidate_services=context.graph_data.get("candidate_services", []),
             bounded_contexts=context.graph_data.get("bounded_contexts", []),

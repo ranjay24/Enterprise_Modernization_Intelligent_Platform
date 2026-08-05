@@ -24,6 +24,7 @@ class AnalysisResult:
     readiness_dimensions: dict[str, dict] = field(default_factory=dict)
     risk_report: dict[str, Any] = field(default_factory=dict)
     dependency_graph: dict[str, Any] = field(default_factory=dict)
+    coupling_analysis: dict[str, Any] = field(default_factory=dict)
     architecture_graph: dict[str, Any] = field(default_factory=dict)
     candidate_services: list[dict] = field(default_factory=list)
     bounded_contexts: list[dict] = field(default_factory=list)
@@ -58,6 +59,7 @@ class AnalysisResult:
             "readiness_dimensions": self.readiness_dimensions,
             "risk_report": self.risk_report,
             "dependency_graph": self.dependency_graph,
+            "coupling_analysis": self.coupling_analysis,
             "architecture_graph": self.architecture_graph,
             "candidate_services": self.candidate_services,
             "bounded_contexts": self.bounded_contexts,

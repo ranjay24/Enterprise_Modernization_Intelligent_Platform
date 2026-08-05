@@ -1,6 +1,7 @@
 """SNS notification client (placeholder for future use)."""
 
 import logging
+from typing import Optional
 
 from app.aws.clients import AWSClients
 

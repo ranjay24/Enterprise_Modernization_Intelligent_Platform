@@ -1,5 +1,5 @@
 import api from './api';
-import type { JobResponse, AnalysisResult, DeployResponse } from '@/types';
+import type { JobResponse, AnalysisResult, DeployResponse, CodeGenStatus, ArchitectureDesign, CodeGenPlan, CodeGenCodeResponse, ReviewReport } from '@/types';
 
 export async function uploadCodebase(file: File): Promise<JobResponse> {
   const formData = new FormData();
@@ -57,5 +57,36 @@ export async function deleteAllJobs(): Promise<{ status: string; count: number }
 
 export async function deployService(jobId: string, serviceName: string): Promise<DeployResponse> {
   const { data } = await api.post('/deploy', { job_id: jobId, service_name: serviceName });
+  return data;
+}
+
+export async function startCodeGeneration(jobId: string): Promise<{ status: string; job_id: string }> {
+  const { data } = await api.post(`/codegen/${jobId}/start`);
+  return data;
+}
+
+export async function getCodeGenStatus(jobId: string): Promise<CodeGenStatus> {
+  const { data } = await api.get(`/codegen/${jobId}/status`);
+  return data;
+}
+
+export async function getCodeGenArchitecture(jobId: string): Promise<ArchitectureDesign> {
+  const { data } = await api.get(`/codegen/${jobId}/architecture`);
+  return data;
+}
+
+export async function getCodeGenPlan(jobId: string): Promise<CodeGenPlan> {
+  const { data } = await api.get(`/codegen/${jobId}/plan`);
+  return data;
+}
+
+export async function getCodeGenCode(jobId: string, service?: string): Promise<CodeGenCodeResponse> {
+  const params = service ? { service } : undefined;
+  const { data } = await api.get(`/codegen/${jobId}/code`, { params });
+  return data;
+}
+
+export async function getCodeGenReview(jobId: string): Promise<ReviewReport> {
+  const { data } = await api.get(`/codegen/${jobId}/review`);
   return data;
 }

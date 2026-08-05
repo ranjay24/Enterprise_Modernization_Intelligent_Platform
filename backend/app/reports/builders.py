@@ -11,10 +11,16 @@ def build_executive_summary(results: dict) -> dict:
     readiness = results.get("readiness", {})
     cost = results.get("cost_comparison", {})
     services = results.get("service_boundaries", [])
+    sprint2 = results.get("sprint2_analysis", {}) or {}
+    project_name = (
+        (sprint2.get("project_summary", {}) or {}).get("project_name")
+        or results.get("project_name")
+        or results.get("job_id", "Unknown")
+    )
 
     return {
         "title": "Executive Summary — Monolith to Microservices Migration",
-        "project_name": results.get("job_id", "Unknown"),
+        "project_name": project_name,
         "overall_score": readiness.get("overall", 0),
         "risk_level": _derive_risk_level(readiness),
         "recommended_services": len(services),

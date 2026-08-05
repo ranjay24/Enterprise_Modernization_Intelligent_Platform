@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, CheckCircle2, Calendar, BarChart3 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, BarChart3, Sparkles } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useResultsData } from '@/hooks/useResultsData';
 import { formatConfidence } from '@/utils/formatters';
 import { ExecutiveSummary } from '@/components/results/ExecutiveSummary';
@@ -9,14 +10,13 @@ import { ArchitectureIntelligence } from '@/components/results/ArchitectureIntel
 import { ConfidenceCenter } from '@/components/results/ConfidenceCenter';
 import { RiskHeatmap } from '@/components/results/RiskHeatmap';
 import { MicroserviceRecommendations } from '@/components/results/MicroserviceRecommendations';
-import { MigrationRoadmap } from '@/components/results/MigrationRoadmap';
 import { ADRCenter } from '@/components/results/ADRCenter';
 import { ExplainabilityCenter } from '@/components/results/ExplainabilityCenter';
 import { TechnicalDebtCenter } from '@/components/results/TechnicalDebtCenter';
 import { CostAndROI } from '@/components/results/CostAndROI';
 import { ValidationSummary } from '@/components/results/ValidationSummary';
 import { GeneratedArtifacts } from '@/components/results/GeneratedArtifacts';
-import { ExportCenter } from '@/components/results/ExportCenter';
+
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/common/LoadingSkeleton';
 import { cn } from '@/utils/cn';
@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/Badge';
 
 export default function ResultsPage() {
   const { jobId } = useParams<{ jobId: string }>();
+  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useResultsData(jobId);
 
   if (isLoading) {
@@ -39,7 +40,7 @@ export default function ResultsPage() {
   if (isError || !data) {
     return (
       <div className="p-6 lg:p-8 max-w-[1440px] mx-auto">
-        <Link to="/jobs" className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] mb-6">
+        <Link to="/jobs" onClick={() => queryClient.invalidateQueries({ queryKey: ['jobs'] })} className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] mb-6">
           <ArrowLeft className="w-4 h-4" /> Back to Jobs
         </Link>
         <div className="text-center py-20">
@@ -54,7 +55,7 @@ export default function ResultsPage() {
     );
   }
 
-  const { analysis, confidence, riskHeatmap, recommendations, validation, artifacts, exports: exportOptions } = data;
+  const { analysis, confidence, riskHeatmap, recommendations, validation, artifacts } = data;
   const overallScore = typeof analysis.readiness?.overall === 'number' ? analysis.readiness.overall : 0;
   const scoreColor = overallScore >= 70 ? 'text-[var(--success)]' : overallScore >= 40 ? 'text-[var(--warning)]' : 'text-[var(--risk)]';
 
@@ -63,6 +64,7 @@ export default function ResultsPage() {
       {/* Top nav */}
       <Link
         to="/jobs"
+        onClick={() => queryClient.invalidateQueries({ queryKey: ['jobs'] })}
         className="inline-flex items-center gap-1.5 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors w-fit"
       >
         <ArrowLeft className="w-4 h-4" /> Back to Jobs
@@ -100,7 +102,7 @@ export default function ResultsPage() {
         <div className="grid grid-cols-4 gap-px bg-[var(--border-subtle)] rounded-lg overflow-hidden mt-5">
           {[
             { label: 'Service Boundaries', value: analysis.service_boundaries?.length ?? 0 },
-            { label: 'ADRs Generated', value: analysis.adrs?.filter((a: any) => a.status === 'accepted').length ?? 0 },
+            { label: 'ADRs Generated', value: analysis.adrs?.length ?? 0 },
             { label: 'Migration Waves', value: analysis.migration_waves?.length ?? 0 },
             { label: 'Annual Savings', value: analysis.cost_comparison?.annual_savings ? `$${(analysis.cost_comparison.annual_savings / 1000).toFixed(0)}k` : '-' },
           ].map((stat) => (
@@ -109,6 +111,18 @@ export default function ResultsPage() {
               <div className="text-[10px] text-[var(--text-muted)] mt-0.5">{stat.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* Action bar */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <Link to={`/jobs/${jobId}/studio`} className="inline-flex items-center gap-2">
+            <Button className="gap-2">
+              <Sparkles className="w-4 h-4" /> Generate Microservices
+            </Button>
+          </Link>
+          <p className="text-[11px] text-[var(--text-muted)]">
+            4-agent Bedrock loop · Spring Boot 3 · Kafka / RabbitMQ · Resilience4j
+          </p>
         </div>
       </div>
 
@@ -120,14 +134,12 @@ export default function ResultsPage() {
       <ConfidenceCenter data={confidence} />
       <RiskHeatmap entries={riskHeatmap} />
       <MicroserviceRecommendations recommendations={recommendations} />
-      <MigrationRoadmap waves={analysis.migration_waves} />
       <ADRCenter adrs={analysis.adrs} />
       <ExplainabilityCenter analysis={analysis} />
       <TechnicalDebtCenter analysis={analysis} />
       <CostAndROI analysis={analysis} />
       <ValidationSummary checkpoints={validation} />
       <GeneratedArtifacts artifacts={artifacts} />
-      <ExportCenter exports={exportOptions} />
     </div>
   );
 }

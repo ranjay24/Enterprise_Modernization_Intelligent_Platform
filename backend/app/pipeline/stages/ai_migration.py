@@ -31,7 +31,8 @@ class AIMigrationStage(BaseAIStage):
         from app.ai import orchestrator as ai_orchestrator
         services = context.get_result_data("ai_boundaries").get("services", [])
         readiness = context.get_result_data("ai_readiness")
-        result = ai_orchestrator.generate_migration_waves(services, readiness)
+        analysis_data = context.get_result_data("static_analysis")
+        result = ai_orchestrator.generate_migration_waves(services, readiness, analysis_data)
         return result, "sprint3-deterministic"
 
     def fallback(self) -> dict:

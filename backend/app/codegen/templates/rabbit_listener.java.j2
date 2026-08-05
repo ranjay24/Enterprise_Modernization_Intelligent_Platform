@@ -1,0 +1,31 @@
+package {{ base_package }}.messaging;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.stereotype.Component;
+
+@Component
+public class {{ event_listener_class }} {
+
+    private static final Logger log = LoggerFactory.getLogger({{ event_listener_class }}.class);
+
+    private final RabbitTemplate rabbitTemplate;
+
+    public {{ event_listener_class }}(RabbitTemplate rabbitTemplate) {
+        this.rabbitTemplate = rabbitTemplate;
+    }
+
+    public void publish(String queue, Object payload) {
+        rabbitTemplate.convertAndSend(queue, payload);
+        log.info("published_message queue={}", queue);
+    }
+
+{% for queue in subscribe_queues %}
+    @RabbitListener(queues = "{{ queue }}")
+    public void on{{ queue }}(Object message) {
+        log.info("consumed_message queue={} message={}", "{{ queue }}", message);
+    }
+{% endfor %}
+}

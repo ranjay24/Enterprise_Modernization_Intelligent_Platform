@@ -1,0 +1,18 @@
+package {{ base_package }};
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+{% if feign_clients %}
+import org.springframework.cloud.openfeign.EnableFeignClients;
+{% endif %}
+
+@SpringBootApplication
+{% if feign_clients %}
+@EnableFeignClients
+{% endif %}
+public class {{ main_class }} {
+
+    public static void main(String[] args) {
+        SpringApplication.run({{ main_class }}.class, args);
+    }
+}

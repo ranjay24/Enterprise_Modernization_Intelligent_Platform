@@ -15,9 +15,12 @@ from app.analysis.events.bus import EventType
 logger = structlog.get_logger(__name__)
 
 SPRING_ANNOTATIONS = {"Service", "Component", "Controller", "RestController", "Repository", "Configuration", "RestControllerAdvice", "ControllerAdvice"}
+SERVICE_ANNOTATIONS = {"Service", "Component"}
+REPOSITORY_INTERFACES = ("JpaRepository", "CrudRepository", "PagingAndSortingRepository", "JpaSpecificationExecutor", "MongoRepository", "ElasticsearchRepository")
+LOMBOK_ANNOTATIONS = {"Data", "Builder", "Getter", "Setter", "AllArgsConstructor", "NoArgsConstructor", "ToString", "EqualsAndHashCode", "RequiredArgsConstructor"}
 ENTITY_ANNOTATIONS = {"Entity", "Table", "Document"}
 DTO_PACKAGES = {"dto", "model", "request", "response", "command", "query"}
-EXCEPTION_SUFFIXES = ("Exception", "Error")
+EXCEPTION_SUFFIXES = ("Exception", "Error", "Exceptions")
 CONFIG_ANNOTATIONS = {"Configuration", "SpringBootApplication", "EnableAutoConfiguration"}
 
 
@@ -219,15 +222,22 @@ class JavaParser(Analyzer):
 
         is_interface = class_type == "interface"
         is_abstract = bool(re.search(r"abstract\s+class\s+", content))
-        is_entity = bool(re.search(r"@(?:Entity|Table|Document)", content))
-        is_controller = bool(re.search(r"@(?:RestController|Controller)", content))
-        is_service = bool(SPRING_ANNOTATIONS.intersection(annotations))
-        is_repository = bool(re.search(r"@(?:Repository|CrudRepository|JpaRepository)", content))
+        is_entity = bool(re.search(r"@(?:Entity|Table|Document)(?!\w)", content))
+        is_controller = bool(re.search(r"@(?:RestController|Controller)(?!Advice)", content))
+        is_service = bool(SERVICE_ANNOTATIONS.intersection(annotations))
+        is_repository = bool(
+            re.search(r"@Repository(?!\w)", content)
+            or re.search(r"extends\s+(" + "|".join(REPOSITORY_INTERFACES) + r")(?![a-zA-Z])", content)
+        )
         is_dto = (
-            bool({"Data", "Builder", "Getter", "Setter", "AllArgsConstructor", "NoArgsConstructor"}.intersection(annotations))
-            or is_entity
-            or is_repository
-            or (package and any(p in package.lower() for p in DTO_PACKAGES) and not injected_fields)
+            not is_entity
+            and not is_repository
+            and not is_controller
+            and not is_service
+            and (
+                bool(LOMBOK_ANNOTATIONS.intersection(annotations))
+                or (package and any(p in package.lower() for p in DTO_PACKAGES))
+            )
         )
         is_exception = name.endswith(EXCEPTION_SUFFIXES) or "Exception" in annotations
         is_configuration = bool(CONFIG_ANNOTATIONS.intersection(annotations))
@@ -240,6 +250,9 @@ class JavaParser(Analyzer):
             and not is_controller
             and not is_service
             and not is_repository
+            and not is_configuration
+            and not is_dto
+            and not is_exception
             and all(re.search(r"static", content[m.start():m.start()+50]) for m in re.finditer(r"(?:public|protected)\s+.*?\s+(\w+)\s*\(", content) if m.group(1) in utility_methods)
             and len(utility_methods) > 0
             and not injected_fields
@@ -266,12 +279,23 @@ class JavaParser(Analyzer):
         endpoints = []
         mapping = {"GetMapping": "GET", "PostMapping": "POST", "PutMapping": "PUT", "DeleteMapping": "DELETE", "PatchMapping": "PATCH", "RequestMapping": "ALL"}
         for ann, method in mapping.items():
-            for path_m in re.finditer(rf"@{ann}\s*\(\s*[\"']([^\"']+)[\"']\s*\)", content):
-                func_m = re.search(rf"@{ann}.*?\n\s*(?:public|protected)\s+\S+\s+(\w+)\s*\(", content, re.DOTALL)
-                endpoints.append(ParsedEndpoint(
-                    method=method, path=path_m.group(1),
-                    handler_class=class_name,
-                    handler_method=func_m.group(1) if func_m else "unknown",
-                    annotations=[ann],
-                ))
+            # Match the mapping annotation (string, named arg, or array of paths)
+            # together with the handler method that immediately follows it
+            # (allowing for intervening parameter annotations).
+            pattern = re.compile(
+                rf"@{ann}\s*\((?P<args>[^)]*)\)"
+                rf"(?:\s*\n\s*@\w+(?:\([^)]*\))?)*"
+                rf"\s*\n\s*(?:public|protected|private)\s+[\w<>\[\],\s?]+\s+(?P<handler>\w+)\s*\("
+            )
+            for match in pattern.finditer(content):
+                paths = re.findall(r"[\"']([^\"']+)[\"']", match.group("args"))
+                if not paths:
+                    continue
+                for path in paths:
+                    endpoints.append(ParsedEndpoint(
+                        method=method, path=path,
+                        handler_class=class_name,
+                        handler_method=match.group("handler"),
+                        annotations=[ann],
+                    ))
         return endpoints

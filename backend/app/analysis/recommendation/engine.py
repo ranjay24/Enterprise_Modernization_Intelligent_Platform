@@ -88,6 +88,41 @@ class RecommendationEngine(Analyzer):
                     evidence=[f"Package: {pkg}", f"{len(controllers)} controllers", f"{len(services)} services"],
                     category="microservice_candidate",
                 ))
+
+        if not candidates:
+            candidates = self._discover_service_layer_candidates(ctx)
+        return candidates
+
+    def _discover_service_layer_candidates(self, ctx: AnalysisContext) -> list[Recommendation]:
+        """Fallback for layered packages (controllers/services/repos/entities split
+        across separate packages): group each service with the controllers that use it
+        and the repositories/entities it references."""
+        candidates = []
+        classes = {c.name: c for c in ctx.parsed_classes}
+        services = [c for c in ctx.parsed_classes if c.is_service]
+        for s in services:
+            group = {s.name}
+            for c in ctx.parsed_classes:
+                if c.name == s.name:
+                    continue
+                if s.name in set(c.dependencies) or s.name in set(c.injected_fields):
+                    group.add(c.name)
+            group_classes = [classes[n] for n in group if n in classes]
+            controllers = [c for c in group_classes if c.is_controller]
+            repos = [c for c in group_classes if c.is_repository]
+            entities = [c for c in group_classes if c.is_entity]
+            if not (controllers or repos or entities):
+                continue
+            candidates.append(Recommendation(
+                title=f"Extract {s.name} as Microservice",
+                description=f"Service {s.name} is used by {len(controllers)} controller(s) with {len(repos)} repositories and {len(entities)} entities — strong extraction candidate",
+                priority="high" if len(controllers) >= 2 else "medium",
+                business_value="Independent deployment, scaling, team ownership",
+                estimated_effort=f"{len(group_classes) * 2} person-days",
+                confidence=min(0.95, 0.5 + len(controllers) * 0.1),
+                evidence=[f"Service: {s.name}", f"{len(controllers)} controllers", f"{len(repos)} repositories", f"{len(entities)} entities"],
+                category="microservice_candidate",
+            ))
         return candidates
 
     def _discover_bounded_contexts(self, ctx: AnalysisContext) -> list[Recommendation]:
@@ -110,6 +145,30 @@ class RecommendationEngine(Analyzer):
                     evidence=[f"Entities: {[e.name for e in entities]}", f"Services: {len(services)}"],
                     category="bounded_context",
                 ))
+
+        if not contexts:
+            contexts = self._discover_service_layer_contexts(ctx)
+        return contexts
+
+    def _discover_service_layer_contexts(self, ctx: AnalysisContext) -> list[Recommendation]:
+        """Fallback for layered packages: bound each service with the entities it references."""
+        contexts = []
+        services = [c for c in ctx.parsed_classes if c.is_service]
+        for s in services:
+            s_deps = set(s.dependencies) | set(s.injected_fields)
+            entities = [c for c in ctx.parsed_classes if c.is_entity and c.name in s_deps]
+            if not entities:
+                continue
+            contexts.append(Recommendation(
+                title=f"Bounded Context: {s.name}",
+                description=f"Service {s.name} owns {len(entities)} entities — natural domain boundary",
+                priority="medium",
+                business_value="Clear domain boundaries for microservice extraction",
+                estimated_effort="Analysis and refinement",
+                confidence=min(0.85, 0.4 + len(entities) * 0.1),
+                evidence=[f"Entities: {[e.name for e in entities]}", f"Service: {s.name}"],
+                category="bounded_context",
+            ))
         return contexts
 
     def _discover_migration_candidates(self, ctx: AnalysisContext) -> list[Recommendation]:

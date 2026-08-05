@@ -42,7 +42,7 @@ class QualityMetricsAnalyzer(Analyzer):
 
         injection_count = sum(len(c.injected_fields) for c in classes)
         avg_injection = injection_count / total_classes if total_classes > 0 else 0
-        cohesion_estimate = max(0, 100 - (avg_injection * 10) - (god_ratio * 50))
+        cohesion_estimate, coupling_estimate = self._package_coupling(classes, context)
 
         duplication = self._estimate_duplication(classes)
 
@@ -51,8 +51,8 @@ class QualityMetricsAnalyzer(Analyzer):
             "complexity_score": round(complexity_score, 1),
             "technical_debt_hours": round(debt_hours, 1),
             "debt_ratio": round(debt_ratio, 1),
-            "cohesion_estimate": round(cohesion_estimate, 1),
-            "coupling_estimate": round(min(100, avg_injection * 15 + god_ratio * 40), 1),
+            "cohesion_estimate": cohesion_estimate,
+            "coupling_estimate": coupling_estimate,
             "duplication_percent": round(duplication, 1),
             "overall_quality": round((maintainability + complexity_score + cohesion_estimate) / 3, 1),
         }
@@ -62,6 +62,38 @@ class QualityMetricsAnalyzer(Analyzer):
 
         logger.info("quality_calculated", maintainability=round(maintainability, 1))
         return context
+
+    def _package_coupling(self, classes, context) -> tuple[float, float]:
+        """Package-level coupling derived from real intra-project dependencies.
+
+        cohesion_estimate is the share of dependency edges that stay inside the
+        same package; coupling_estimate is the share that cross packages. This
+        mirrors the boundary-level cohesion/coupling so the two views agree
+        instead of contradicting each other (e.g. "94% cohesion" vs a
+        tightly-coupled monolith).
+        """
+        all_types = context.parsed_classes + context.parsed_interfaces + context.parsed_enums
+        by_name = {c.name: c for c in all_types}
+
+        total_edges = 0
+        cross_pkg_edges = 0
+        for c in classes:
+            pkg = c.package or ""
+            deps = set(c.dependencies)
+            deps.update(c.injected_fields)
+            for dep in deps:
+                target = by_name.get(dep)
+                if target is None:
+                    continue
+                total_edges += 1
+                if (target.package or "") != pkg:
+                    cross_pkg_edges += 1
+
+        if total_edges == 0:
+            return 100.0, 0.0
+        coupling = round(cross_pkg_edges / total_edges * 100, 1)
+        cohesion = round((total_edges - cross_pkg_edges) / total_edges * 100, 1)
+        return cohesion, coupling
 
     def _estimate_duplication(self, classes) -> float:
         if not classes:

@@ -25,6 +25,8 @@
 | Phase 3 — Architecture Page (Bedrock target graph) | Abhijeet | 2026-08-04 | specs/15-service-code-generation.md |
 | Codegen Fixes — progress/stage sequencing & summary artifact | Abhijeet | 2026-08-04 | specs/15-service-code-generation.md |
 | Codegen Fixes — Studio agent-step mapping & query gating | Abhijeet | 2026-08-04 | specs/15-service-code-generation.md |
+| Codegen Enhancements — architecture communication, Kafka/RabbitMQ detection | Abhijeet | 2026-08-05 | specs/15-service-code-generation.md |
+| Codegen Enhancements — inter-service Feign clients, review findings | Abhijeet | 2026-08-05 | specs/15-service-code-generation.md |
 
 ## Results Accuracy Fix — Changes (2026-07-31)
 - **Parser/static analyzer flags**: `is_controller` excludes `@ControllerAdvice`; `is_repository` catches `extends CrudRepository` (and JPA/Paging/Mongo/Elasticsearch interfaces); `is_dto` excludes entities/repos/controllers/services; Lombok annotations recognized; `Exceptions` suffix no longer flagged as exception class.

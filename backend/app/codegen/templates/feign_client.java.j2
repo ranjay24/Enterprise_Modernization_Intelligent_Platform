@@ -1,0 +1,22 @@
+package {{ base_package }}.client;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Collections;
+import java.util.List;
+
+@FeignClient(name = "{{ client_name }}", url = "{{ feign_url }}")
+public interface {{ client_class }} {
+
+    @Retry(name = "default")
+    @CircuitBreaker(name = "default", fallbackMethod = "fallbackFindAll")
+    @GetMapping("/internal/{{ resource_path }}")
+    List<Object> findAll();
+
+    default List<Object> fallbackFindAll(Throwable t) {
+        return Collections.emptyList();
+    }
+}

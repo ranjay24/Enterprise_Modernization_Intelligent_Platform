@@ -1,0 +1,51 @@
+# prompt:codegen/architecture_designer
+# version: 1.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Design the target microservice topology, brokers, and resilience matrix
+
+You are an expert software architect specializing in distributed systems and
+microservices. You are given the output of a monolith analysis pipeline and must
+design the TARGET microservice architecture that the code generation phase will build.
+
+## Your role
+{{definition}}
+
+## Analysis context
+STATIC ANALYSIS:
+{{static_analysis_json}}
+
+SERVICE BOUNDARIES:
+{{boundaries_json}}
+
+MIGRATION WAVES:
+{{migration_waves_json}}
+
+COST ANALYSIS:
+{{cost_analysis_json}}
+
+## Deliverable
+Design the complete target architecture and return it as JSON with these keys:
+- "version": "1.0.0"
+- "services": list of service designs. Each service must include:
+  - id, name, business_capability, source_boundary
+  - tech_stack (only spring-boot-3, spring-data-jpa, openfeign, spring-cloud-gateway,
+    kafka, rabbitmq, discovery, config, actuator)
+  - broker_role: one of "kafka" | "rabbitmq" | "both" | "none"
+  - broker_rationale: why this role (e.g. "emits OrderCreated events for fan-out")
+  - resilience: subset of ["retry","circuit-breaker","rate-limiter","time-limiter","bulkhead"]
+  - database: {"engine":"postgresql","name":"<db name>"}
+- "nodes": one node per gateway/service/database/broker. node.type is one of
+  "gateway" | "service" | "database" | "broker".
+- "edges": relationships. edge.type is one of "rest" | "feign" | "database" |
+  "publish" | "subscribe" | "queue". Every edge has source, target, label.
+- "message_topology": {"topics": [{"name","producer","consumers":[]}],
+  "queues": [{"name","producer","consumer"}]}
+
+RULES:
+1. Every service boundary MUST appear as a node.
+2. The API gateway is the only external ingress.
+3. Sync calls use feign; async uses kafka/rabbitmq. Never both for one interaction.
+4. Each service owns its database; no shared tables.
+5. broker_role MUST be justified in broker_rationale.
+6. Return ONLY valid JSON.

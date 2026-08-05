@@ -1,4 +1,14 @@
-export type JobStatus = 'uploaded' | 'analyzing' | 'paused' | 'cancelled' | 'analysis_complete' | 'failed' | 'deployed';
+export type JobStatus =
+  | 'uploaded'
+  | 'analyzing'
+  | 'paused'
+  | 'cancelled'
+  | 'analysis_complete'
+  | 'generating'
+  | 'generation_complete'
+  | 'generation_with_warnings'
+  | 'failed'
+  | 'deployed';
 
 export interface JobResponse {
   job_id: string;

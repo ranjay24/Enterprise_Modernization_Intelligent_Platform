@@ -20,6 +20,11 @@
 | Cohesion/Coupling Integration Fix | Abhijeet | 2026-07-31 | specs/02-service-boundary-detection.md |
 | Results Accuracy Fix (job 5e529ab8) | Abhijeet | 2026-07-31 | specs/02-service-boundary-detection.md |
 | Single-File Monolith Parsing Fix | Abhijeet | 2026-08-02 | specs/02-service-boundary-detection.md |
+| Phase 3 — Agentic Service Code Generation | Abhijeet | 2026-08-04 | specs/15-service-code-generation.md |
+| Phase 3 — Frontend Modernization Studio | Abhijeet | 2026-08-04 | specs/15-service-code-generation.md |
+| Phase 3 — Architecture Page (Bedrock target graph) | Abhijeet | 2026-08-04 | specs/15-service-code-generation.md |
+| Codegen Fixes — progress/stage sequencing & summary artifact | Abhijeet | 2026-08-04 | specs/15-service-code-generation.md |
+| Codegen Fixes — Studio agent-step mapping & query gating | Abhijeet | 2026-08-04 | specs/15-service-code-generation.md |
 
 ## Results Accuracy Fix — Changes (2026-07-31)
 - **Parser/static analyzer flags**: `is_controller` excludes `@ControllerAdvice`; `is_repository` catches `extends CrudRepository` (and JPA/Paging/Mongo/Elasticsearch interfaces); `is_dto` excludes entities/repos/controllers/services; Lombok annotations recognized; `Exceptions` suffix no longer flagged as exception class.

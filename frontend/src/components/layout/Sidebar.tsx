@@ -18,6 +18,7 @@ import {
   Sparkles,
   User,
   ChevronDown,
+  Wand2,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAppStore } from '@/store/useAppStore';
@@ -44,6 +45,12 @@ const navGroups: NavGroup[] = [
       { to: '/architecture', icon: GitBranch, label: 'Architecture' },
       { to: '/migration', icon: Layers, label: 'Migration' },
       { to: '/reports', icon: BarChart3, label: 'Reports' },
+    ],
+  },
+  {
+    label: 'Modernization',
+    items: [
+      { to: '/studio', icon: Wand2, label: 'Modernization Studio' },
     ],
   },
   {

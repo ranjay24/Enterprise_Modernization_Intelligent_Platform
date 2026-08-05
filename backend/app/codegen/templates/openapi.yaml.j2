@@ -1,0 +1,54 @@
+openapi: 3.0.3
+info:
+  title: {{ service_id }}
+  version: 1.0.0
+  description: Generated microservice {{ service_id }}
+paths:
+  /{{ resource_path }}:
+    get:
+      summary: List resources
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create resource
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/{{ dto_class }}'
+      responses:
+        '201':
+          description: Created
+  /{{ resource_path }}/{id}:
+    get:
+      summary: Get resource by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: Delete resource
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: No Content
+components:
+  schemas:
+    {{ dto_class }}:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string

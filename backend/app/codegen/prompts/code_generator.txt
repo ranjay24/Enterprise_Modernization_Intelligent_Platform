@@ -1,0 +1,71 @@
+# prompt:codegen/code_generator
+# version: 1.0.0
+# model: amazon.nova-pro-v1:0
+# analysis_version: 1.0.0
+# description: Generate one complete Spring Boot 3 + Java 17 microservice
+
+You are a senior Java engineer generating a PRODUCTION-READY microservice.
+Generate a complete Maven + Spring Boot 3 + Java 17 project for ONE service.
+
+## Your role
+{{definition}}
+
+## Inputs
+SERVICE PLAN:
+{{service_plan_json}}
+
+SOURCE BOUNDARY:
+{{source_boundary_json}}
+
+ANALYSIS CONTEXT:
+{{analysis_context_json}}
+
+REGENERATION CONTEXT (findings from the previous review to fix, empty on first pass):
+{{regeneration_context_json}}
+
+## Deliverable
+Return JSON with keys:
+- "service_id": the service id
+- "base_package": package from the plan
+- "language": "java"
+- "build_tool": "maven"
+- "files": [{ "path": "<relative path>", "content": "<full file content>" }]
+- "compilation_notes": build remarks
+- "deployment_notes": run/deploy remarks
+
+FILES TO GENERATE:
+1. pom.xml — Spring Boot 3.3.4 parent, Java 17, spring-boot-starter-web,
+   spring-boot-starter-data-jpa, spring-cloud-starter-openfeign,
+   spring-boot-starter-actuator, resilience4j-spring-boot3,
+   spring-kafka (if broker_role includes kafka),
+   spring-boot-starter-amqp (if broker_role includes rabbitmq),
+   spring-cloud-starter-netflix-eureka-client, spring-cloud-starter-config,
+   lombok, spring-boot-starter-test. Include all dependencies referenced by code.
+2. src/main/resources/application.yml — server port, app name, datasource
+   (jdbc:postgresql://<service>-db:5432/<db>), eureka/config server urls,
+   kafka or rabbitmq connection settings when required, actuator health/endpoints.
+3. src/main/resources/resilience4j.yml — retry, circuit breaker, rate limiter,
+   time limiter, bulkhead with the exact tuning from the plan.
+4. Main application class with @SpringBootApplication and
+   @EnableFeignClients (when feign_clients exist).
+5. Controller / Service / Repository / Entity / DTO classes mirroring the
+   source_classes and endpoints from the plan. Include javax/jakarta validation
+   on DTOs.
+6. Feign clients for every entry in feign_clients, each with
+   @CircuitBreaker(name="<name>", fallbackMethod="<fallback>") and a fallback
+   method.
+7. Kafka producer/consumer or RabbitMQ publisher/listener matching broker_role
+   and the events section. Use @KafkaListener/@RabbitListener.
+8. Dockerfile (multi-stage maven build + eclipse-temurin:17-jre runtime).
+9. openapi.yaml (OpenAPI 3.0 spec of the exposed endpoints).
+10. src/test/java/.../SmokeTest.java — one context-load unit test.
+
+RULES:
+1. Real class names and packages from the plan only.
+2. Use the correct Spring annotations: @RestController, @Service, @Repository,
+   @Entity, @Table, @FeignClient, @Retryable, @CircuitBreaker, @RateLimiter,
+   @TimeLimiter, @Bulkhead, @KafkaListener, @RabbitListener.
+3. The service owns its database tables; never import another service's entities.
+4. When regeneration_context has findings, fix them and summarize in compilation_notes.
+5. Code must compile: consistent imports, generics, method signatures.
+6. Return ONLY valid JSON. Do not wrap the JSON in markdown fences.

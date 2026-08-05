@@ -11,7 +11,7 @@ from app.exceptions.custom import EMIPException
 from app.exceptions.handlers import emip_exception_handler, generic_exception_handler
 from app.monitoring.logging import configure_structured_logging
 from app.monitoring.middleware import CorrelationMiddleware
-from app.routes import analyze, deploy, jobs, results, upload
+from app.routes import analyze, codegen, deploy, jobs, results, upload
 
 settings = get_settings()
 
@@ -42,6 +42,7 @@ app.add_middleware(APIKeyMiddleware)
 app.include_router(upload.router, prefix="/api", tags=["upload"])
 app.include_router(analyze.router, prefix="/api", tags=["analyze"])
 app.include_router(deploy.router, prefix="/api", tags=["deploy"])
+app.include_router(codegen.router, prefix="/api", tags=["codegen"])
 app.include_router(results.router, prefix="/api", tags=["results"])
 app.include_router(jobs.router, prefix="/api", tags=["jobs"])
 

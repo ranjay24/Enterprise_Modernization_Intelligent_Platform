@@ -50,6 +50,8 @@ class ArchitectureDesignerAgent(Agent):
         edges: list[dict] = []
         services: list[dict] = []
         brokers: list[dict] = []
+        topics: list[dict] = []
+        queues: list[dict] = []
 
         dependency_index: dict[str, list[str]] = {}
         if analysis_data:
@@ -59,20 +61,36 @@ class ArchitectureDesignerAgent(Agent):
                 if src and dst:
                     dependency_index.setdefault(src, []).append(dst)
 
+        service_ids: list[str] = []
         for i, svc in enumerate(boundaries):
             svc_id = codegen_models.normalize_service_id(svc, f"service-{i}")
+            service_ids.append(svc_id)
+
+            # Classify broker role based on dependencies
+            broker_role = "none"
+            broker_rationale = "synchronous REST calls only"
+            coupled_services = dependency_index.get(svc.get("name", ""), [])
+            if len(coupled_services) > 2:
+                broker_role = "rabbitmq"
+                broker_rationale = "High coupling detected; command queue pattern for orchestration"
+            elif len(coupled_services) > 0:
+                broker_role = "kafka"
+                broker_rationale = "Inter-service events and data propagation"
+
             services.append({
                 "id": svc_id,
                 "name": svc.get("name", svc_id),
                 "business_capability": svc.get("business_capability", ""),
                 "source_boundary": svc.get("name", svc_id),
                 "tech_stack": ["spring-boot-3", "spring-data-jpa", "openfeign"],
-                "broker_role": "none",
-                "broker_rationale": "no async requirements detected in fallback mode",
+                "broker_role": broker_role,
+                "broker_rationale": broker_rationale,
                 "resilience": ["retry", "circuit-breaker", "time-limiter", "bulkhead"],
                 "database": {"engine": "postgresql", "name": f"{svc_id}_db"},
+                "exposed_endpoints": [{"method": "GET", "path": f"/api/{svc_id}"}],
+                "feign_clients": [{"target_service": sid} for sid in coupled_services[:3]],
             })
-            nodes.append({"id": svc_id, "type": "service", "label": svc.get("name", svc_id)})
+            nodes.append({"id": svc_id, "type": "service", "label": svc.get("name", svc_id), "broker_role": broker_role})
             nodes.append({"id": f"{svc_id}-db", "type": "database", "label": f"{svc_id}_db"})
             edges.append({
                 "id": f"gateway-{svc_id}",
@@ -88,6 +106,19 @@ class ArchitectureDesignerAgent(Agent):
                 "type": "database",
                 "label": "JPA",
             })
+
+        # Add inter-service Feign edges
+        for i, svc_id in enumerate(service_ids):
+            svc = boundaries[i] if i < len(boundaries) else {}
+            coupled = dependency_index.get(svc.get("name", ""), [])
+            for target in coupled[:3]:
+                edges.append({
+                    "id": f"{svc_id}-{target}",
+                    "source": svc_id,
+                    "target": target,
+                    "type": "feign",
+                    "label": "Feign client",
+                })
 
         if not brokers:
             pass

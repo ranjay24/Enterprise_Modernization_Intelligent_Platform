@@ -44,6 +44,16 @@ class ServicePlannerAgent(Agent):
         """Deterministic wave plan derived from the architecture's services."""
         services = architecture.get("services") or []
         svc_ids = [codegen_models.normalize_service_id(s) for s in services if codegen_models.normalize_service_id(s)]
+        edges = architecture.get("edges", [])
+
+        # Build Feign client index from edges
+        feign_clients_by_source: dict[str, list[str]] = {}
+        for edge in edges:
+            if edge.get("type") == "feign":
+                source = edge.get("source", "")
+                target = edge.get("target", "")
+                if source and target:
+                    feign_clients_by_source.setdefault(source, []).append(target)
 
         waves = [{"wave": 0, "name": "Platform", "services": ["api-gateway", "config-server", "discovery"], "rationale": "foundation services"}]
         service_plans: dict[str, dict] = {}
@@ -51,16 +61,22 @@ class ServicePlannerAgent(Agent):
             svc_id = codegen_models.normalize_service_id(svc)
             if not svc_id:
                 continue
+
+            # Get Feign clients for this service
+            feign_targets = feign_clients_by_source.get(svc_id, [])
+            feign_list = [{"name": f"{t}Client", "target_service": t} for t in feign_targets]
+
             service_plans[svc_id] = {
                 "id": svc_id,
                 "package": f"com.emip.{svc_id.lower().replace('-', '')}",
                 "source_boundary": svc.get("source_boundary", svc.get("name", svc_id)),
                 "source_classes": [],
-                "exposed_endpoints": [],
+                "exposed_endpoints": svc.get("exposed_endpoints", []),
                 "internal_endpoints": [],
-                "feign_clients": [],
-                "events": {"publishes": [], "subscribes": []},
+                "feign_clients": feign_list,
+                "events": svc.get("events", {"publishes": [], "subscribes": []}),
                 "broker_role": codegen_models.broker_role_of(svc),
+                "broker_rationale": svc.get("broker_rationale", ""),
                 "resilience": {
                     "retry": {"max_attempts": 3, "backoff_ms": 500},
                     "circuit_breaker": {"failure_rate_threshold": 50, "wait_duration_seconds": 10},

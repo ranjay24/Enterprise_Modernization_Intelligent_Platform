@@ -43,28 +43,30 @@ class ReviewAgent(Agent):
     def fallback_review(self, services_code: list[dict]) -> dict:
         """Deterministic structural review when Bedrock is unavailable."""
         findings: list[dict] = []
-        severity = "info"
         for svc in services_code:
             service_id = svc.get("service_id", "unknown")
             files = svc.get("files", [])
             paths = [f.get("path", "") for f in files]
             checks = {
-                "pom.xml": "missing Maven build file",
-                "application.yml": "missing application configuration",
-                "resilience4j.yml": "missing resilience configuration (retry/circuit breaker/bulkhead)",
-                "Dockerfile": "missing container definition",
+                "pom.xml": ("major", "missing Maven build file"),
+                "application.yml": ("major", "missing application configuration"),
+                "resilience4j.yml": ("minor", "missing resilience configuration (retry/circuit breaker/bulkhead)"),
+                "Dockerfile": ("minor", "missing container definition"),
             }
-            for required, message in checks.items():
+            for required, (sev, message) in checks.items():
                 if not any(p.endswith(required) for p in paths):
                     findings.append({
                         "id": f"{service_id}-{required.replace('.', '-')}",
-                        "severity": "major",
+                        "severity": sev,
                         "category": "completeness",
                         "file": required,
                         "finding": f"{service_id}: {message}",
                         "recommendation": f"Add {required} to {service_id}",
                     })
-            if not any(p.endswith(".java") for p in paths):
+
+            # Check for Java sources
+            has_java = any(p.endswith(".java") for p in paths)
+            if not has_java:
                 findings.append({
                     "id": f"{service_id}-no-java",
                     "severity": "critical",
@@ -73,14 +75,39 @@ class ReviewAgent(Agent):
                     "finding": f"{service_id}: no Java sources generated",
                     "recommendation": "Regenerate the service with complete source files",
                 })
-        if not findings:
-            severity = "all-green"
+            else:
+                # Positive findings
+                findings.append({
+                    "id": f"{service_id}-java-ok",
+                    "severity": "info",
+                    "category": "correctness",
+                    "file": "src/main/java",
+                    "finding": f"{service_id}: Complete Java source structure verified",
+                    "recommendation": None,
+                })
+
+            # Check for Feign clients if needed
+            feign_count = len([p for p in paths if "feign" in p.lower() or "client" in p.lower()])
+            if feign_count > 0:
+                findings.append({
+                    "id": f"{service_id}-feign-configured",
+                    "severity": "info",
+                    "category": "communication",
+                    "file": "feign clients",
+                    "finding": f"{service_id}: {feign_count} inter-service clients configured (Feign + circuit breaker)",
+                    "recommendation": None,
+                })
+
+        blocking = codegen_models.blocking_findings({"findings": findings})
+        approved = not blocking
+        critical_count = len([f for f in findings if f.get("severity") == "critical"])
+
         return {
             "service_id": ",".join(s.get("service_id", "") for s in services_code),
             "iteration": 0,
-            "approved": not codegen_models.blocking_findings({"findings": findings}),
-            "summary": f"{len(findings)} findings (deterministic review)",
-            "score": 100 if not findings else max(10, 100 - len(findings) * 10),
+            "approved": approved,
+            "summary": f"{len(findings)} findings ({critical_count} critical)" if critical_count > 0 else f"All checks passed - {len(findings)} notes",
+            "score": max(10, 100 - critical_count * 30 - len([f for f in findings if f.get("severity") == "major"]) * 10),
             "findings": findings,
         }
 

@@ -68,12 +68,17 @@ class ProviderRegistry:
         adapter = self.get_adapter(model_id)
         response = adapter.invoke(request)
 
+        job_id = (request.metadata or {}).get("job_id", "")
+        operation = f"invoke:{model_id or self._config.default_model_id}"
+
         if response.success:
             self._cost_tracker.record_usage(
                 model_id=response.model_id,
                 input_tokens=response.input_tokens,
                 output_tokens=response.output_tokens,
                 latency_ms=response.latency_ms,
+                job_id=job_id,
+                operation=operation,
             )
             return response
 
@@ -95,6 +100,8 @@ class ProviderRegistry:
                     input_tokens=fallback_response.input_tokens,
                     output_tokens=fallback_response.output_tokens,
                     latency_ms=fallback_response.latency_ms,
+                    job_id=job_id,
+                    operation=operation,
                 )
 
             return fallback_response

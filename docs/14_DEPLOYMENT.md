@@ -73,6 +73,10 @@ sam deploy
 Uses the saved configuration from `samconfig.toml`. To use a different environment:
 
 ```powershell
+# Staging (stack emip-staging; resources emip-*-staging; see parameters/staging.json)
+sam deploy --config-env staging
+
+# Prod
 sam deploy --config-env prod
 ```
 
@@ -88,28 +92,17 @@ sam deploy --parameter-overrides Environment=dev LogLevel=INFO
 sam deploy --parameter-overrides Environment=prod LogLevel=WARNING ApiKey=<prod-key>
 ```
 
-## CDK Deployment (Alternative)
+## CDK Deployment (Experimental / Legacy — do not use)
 
-AWS CDK (`infrastructure/app.py`) is available as an alternative deployment mechanism.
-
-### 1. Bootstrap CDK
+AWS CDK (`infrastructure/app.py`) is kept for reference only. It is NOT a
+supported deployment path: it lacks the SQS worker, DLQ, SNS and EventBridge
+resources, and its ALB is HTTP-only. The canonical path is SAM above. If you
+still want to explore it:
 
 ```powershell
 cd infrastructure
 cdk bootstrap aws://<account-id>/us-east-1
-```
-
-This creates the CDK toolkit stack in your account (required once per region).
-
-### 2. Deploy the Stack
-
-```powershell
 cdk deploy EMIP-Backend
-```
-
-### 3. View Outputs
-
-```powershell
 cdk outputs
 ```
 
@@ -121,10 +114,13 @@ The Lambda layer contains all Python dependencies. It is built separately and re
 
 ```powershell
 cd layers
-pip download -r requirements.txt --platform manylinux2014_x86_64 --only-binary=:all: -d dependencies/
-cd dependencies
-zip -r ../dependencies.zip .
+pip download -r requirements.txt --only-binary=:all: --platform manylinux2014_x86_64 `
+  --python-version 3.14 --implementation cp --abi cp314 -d <temp-dir>
+# Unpack each downloaded wheel into layers/dependencies/python/ (the `python/`
+# subfolder is the Lambda layer layout that the SAM template references).
 ```
+
+Pins live in `layers/requirements.txt`; versions must match `backend/requirements.txt`. AWS Lambda already provides `boto3`/`botocore`/`s3transfer`/`jmespath`/`urllib3`/`six`/`dateutil`/`certifi`, so they are excluded from the layer to avoid runtime version drift. Do NOT build the layer on Windows (produces `.pyd` files that cannot import on Amazon Linux — build against `manylinux2014_x86_64` instead).
 
 The SAM template at `infrastructure/template.yaml` references the layer at `ContentUri: ../layers/dependencies/`.
 
@@ -145,7 +141,10 @@ The SAM template at `infrastructure/template.yaml` references the layer at `Cont
 | `SNS_NOTIFICATION_TOPIC` | `emip-notifications` | Notification SNS topic |
 | `EVENTBRIDGE_BUS_NAME` | `emip-events` | EventBridge bus |
 | `ENABLE_XRAY` | `false` | Enable AWS X-Ray tracing |
-| `API_KEY` | (empty) | API key for authentication |
+| `API_KEY` / `EMIP_API_KEY` | (empty) | API key for authentication (empty = auth disabled; Lambda receives it as `EMIP_API_KEY`) |
+| `CORS_ORIGINS` | hosted frontend + localhosts | Comma-separated CORS origins allowed by the backend |
+
+SAM stack parameters: `ApiKey` (default empty = auth off), `NotificationEmail` (default empty = no email subscription), `CorsOrigins`, `DynamoDBJobsTable`, `DynamoDBAnalysisTable`, `LogLevel`. Pipeline terminal/failure events are forwarded bus → SNS topic by rule `emip-pipeline-notifications-<env>`; when `NotificationEmail` is set, confirm the pending subscription email before deploying alerts.
 | `CORS_ORIGINS` | `*` | Allowed CORS origins |
 | `CHECKPOINT_ENABLED` | `true` | Enable pipeline checkpointing |
 | `ARTIFACT_VERSION` | `1.0.0` | Artifact format version |
@@ -221,7 +220,10 @@ For production deployments:
 
 5. **Set up SNS notifications** for deployment events and alarm states.
 
-6. **Use an API key** — set the `ApiKey` parameter and configure clients to send it via the `X-API-Key` header.
+6. **Use an API key (optional)** — by default the API is unauthenticated (the `ApiKey` parameter is empty). To enable auth:
+   - Pass `ApiKey=<key>` to `sam deploy` (also creates an API Gateway API key + usage plan that gate the stage).
+   - The Lambda receives the key as `EMIP_API_KEY` (the middleware honors `EMIP_API_KEY` or `API_KEY`).
+   - Clients must send the key via the `X-API-Key` header (the frontend does this automatically when built with `VITE_API_KEY`). Unauthenticated requests → `401`; health endpoints (`/health`, `/api/health`) stay open.
 
 ## CI/CD
 

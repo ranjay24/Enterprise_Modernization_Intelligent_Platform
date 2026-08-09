@@ -61,7 +61,7 @@ async def start_analysis(
     job_repo.update_job(
         job_id=job_id,
         status=JobStatus.ANALYZING.value,
-        current_phase=AnalysisPhase.UPLOAD.value,
+        current_phase=AnalysisPhase.EXTRACTION.value,
         progress=5,
         error=None,
     )

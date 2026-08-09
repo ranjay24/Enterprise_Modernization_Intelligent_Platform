@@ -164,7 +164,7 @@ export function AIChat() {
           'active:scale-95',
           open && 'scale-0 pointer-events-none'
         )}
-        title="Ask EMIP AI"
+        title="Ask EMIP AI (demo)"
       >
         <MessageSquare className="w-5 h-5" />
       </button>
@@ -188,7 +188,7 @@ export function AIChat() {
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-[var(--text-primary)]">Ask EMIP AI</h3>
-                    <p className="text-[10px] text-[var(--text-secondary)]">Powered by Amazon Bedrock</p>
+                    <p className="text-[10px] text-[var(--text-secondary)]">Demo assistant · pre-written sample answers</p>
                   </div>
                 </div>
                 <button
@@ -208,7 +208,9 @@ export function AIChat() {
                         <Sparkles className="w-5 h-5 text-[var(--accent-purple)]" />
                       </div>
                       <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-1">How can I help?</h4>
-                      <p className="text-xs text-[var(--text-secondary)]">Ask anything about your modernization analysis</p>
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        This demo assistant replies from pre-written examples about a sample analysis — it is not connected to your live job.
+                      </p>
                     </div>
                     <div className="space-y-2">
                       {suggestedPrompts.map((prompt) => {

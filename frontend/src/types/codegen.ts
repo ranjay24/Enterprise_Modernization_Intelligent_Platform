@@ -102,6 +102,14 @@ export interface ReviewReport {
   findings?: ReviewFinding[];
 }
 
+export interface ServiceOrigin {
+  used_fallback?: boolean;
+  files_ai?: number;
+  files_scaffold?: number;
+  files_total?: number;
+  source?: 'bedrock' | 'scaffold' | 'mixed';
+}
+
 export interface CodeGenStatus {
   job_id: string;
   in_progress: boolean;
@@ -112,9 +120,11 @@ export interface CodeGenStatus {
     iterations?: number;
     services_generated?: string[];
     approved?: boolean;
+    service_origins?: Record<string, ServiceOrigin>;
   } | null;
   review: ReviewReport | null;
   services_generated: string[];
+  service_origins?: Record<string, ServiceOrigin>;
 }
 
 export interface CodeGenCodeResponse {

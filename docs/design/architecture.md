@@ -28,7 +28,7 @@ graph TB
     subgraph Worker["Worker Lambda (2048MB, 600s)"]
         PipelineEngine["PipelineEngine<br/>Sequential or DAG-based"]
         Stages["12 Pipeline Stages<br/>Extraction → Static Analysis → Enterprise Analysis →<br/>AI Boundaries → AI Readiness → AI ADRs →<br/>AI Migration → AI Cost → AI Explainability →<br/>Results Assembly → Report Generation → Manifest"]
-        AI["AI Layer<br/>Nova Pro/Lite/Micro<br/>4-level Fallback Chain"]
+        AI["AI Layer<br/>Nova Pro/Lite/Micro<br/>2-step fallback (AI → deterministic)"]
     end
 
     subgraph Storage["AWS Storage"]
@@ -150,7 +150,7 @@ graph LR
 
 6. **DAG-Based Parallel Execution**: Stages with explicit dependencies can run in parallel when the DAG executor is enabled.
 
-7. **4-Level Fallback Chain**: AI succeeds → deterministic fallback → empty result → pipeline continues with degraded flag.
+7. **2-Step Fallback Chain** (in `BaseAIStage`): AI succeeds → result used; AI fails or returns empty → single deterministic fallback with `is_degraded=true`; pipeline continues and the manifest reports degraded stages.
 
 ## Data Flow
 
@@ -159,4 +159,4 @@ graph LR
 3. **Worker**: SQS triggers Worker Lambda → Builds pipeline context → Executes 12 stages (sequential or DAG)
 4. **Artifacts**: Each stage writes an Artifact via ArtifactRepository → S3 + DynamoDB metadata
 5. **Polling**: Frontend polls GET /api/results/{id} → Displays real-time progress
-6. **Completion**: Pipeline completes → EventBridge event → SNS notification → Frontend renders full results
+6. **Completion**: Pipeline completes → EventBridge event → SNS terminal notification (email when `NotificationEmail` is set); the frontend picks up finished results by polling

@@ -203,7 +203,7 @@ clients.sts        # STS client
 |------|---------|
 | `backend/app/ai/engine.py` | AIEngine — central AI orchestration |
 | `backend/app/ai/service.py` | AIService — high-level AI interface |
-| `backend/app/ai/provider/` | Provider adapters (Nova, Claude, etc.) |
+| `backend/app/ai/provider/` | Provider adapters (Nova; capability metadata for Claude/Mistral/Llama) |
 | `backend/app/ai/provider/nova.py` | Amazon Nova model adapter |
 | `backend/app/ai/context/builder.py` | AIContextBuilder — builds AI-ready context |
 | `backend/app/ai/capability_registry.py` | CapabilityRegistry — maps capabilities to AI functions |
@@ -254,8 +254,8 @@ clients.sts        # STS client
 
 | File | Purpose |
 |------|---------|
-| `infrastructure/template.yaml` | SAM template — main IaC |
-| `infrastructure/app.py` | CDK app — alternative IaC |
+| `infrastructure/template.yaml` | SAM template — canonical IaC |
+| `infrastructure/app.py` | CDK app — experimental/legacy, do not deploy |
 | `infrastructure/cdk_stacks/` | CDK stack definitions |
 | `handler.py` | Lambda handler (FastAPI + Mangum) |
 | `worker_handler.py` | Worker Lambda handler |

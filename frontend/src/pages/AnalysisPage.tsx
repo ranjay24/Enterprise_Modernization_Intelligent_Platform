@@ -78,7 +78,7 @@ export default function AnalysisPage() {
           <GlassCardTitle>Pipeline Progress</GlassCardTitle>
         </GlassCardHeader>
         <GlassCardContent>
-          <PipelineStages currentPhase={job.current_phase} progress={job.progress} />
+          <PipelineStages currentPhase={job.current_phase} progress={job.progress} completedPhases={job.completed_phases} />
         </GlassCardContent>
       </GlassCard>
 

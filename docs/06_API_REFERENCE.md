@@ -530,8 +530,10 @@ sequenceDiagram
 
     Pipeline->>Pipeline: Stage 1: extraction
     Pipeline->>Pipeline: Stage 2: static_analysis
-    Pipeline->>Bedrock: Stage 3-9: AI stages
+    Pipeline->>Pipeline: Stage 3: enterprise_analysis
+    Pipeline->>Bedrock: Stages 4/6: ai_boundaries + ai_adrs (Bedrock)
     Bedrock-->>Pipeline: AI results
+    Pipeline->>Pipeline: Stages 5,7-9: deterministic ai_* stages
     Pipeline->>Pipeline: Stage 10-12: assembly, reports, manifest
     Pipeline->>DDB: update_job(status=completed, progress=100)
     Pipeline->>S3: store artifacts

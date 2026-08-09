@@ -21,7 +21,7 @@ export function ExportCenter({ exports: exportOptions }: { exports: ExportOption
     <section>
       <SectionHeader
         title="Export Center"
-        description="Download reports in your preferred format"
+        description="Report exports are coming soon"
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {exportOptions.map((option) => (
@@ -44,8 +44,10 @@ export function ExportCenter({ exports: exportOptions }: { exports: ExportOption
                 return (
                   <button
                     key={fmt}
+                    disabled
+                    title="Export coming soon"
                     className={cn(
-                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
                       formatColors[fmt],
                     )}
                   >

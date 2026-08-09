@@ -6,7 +6,7 @@
 |---|---|---|
 | API Endpoints | 100% | All 13 endpoints implemented and validated |
 | Pipeline Engine | 100% | 12 stages with DAG-based parallel execution |
-| AI Integration | 100% | Nova/Claude providers, 4-level fallback, guardrails |
+| AI Integration | 100% | Nova (Pro/Lite/Micro) providers, deterministic fallback chain, guardrails |
 | Analysis Profiles | 100% | FAST/NORMAL/DEEP/BENCHMARK modes |
 | Frontend Pages | 80% | 9 pages built; some lack full API integration |
 | Frontend Components | 85% | ~95 components built; some refinement needed |

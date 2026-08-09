@@ -182,7 +182,7 @@ Estimates based on Amazon Nova Pro pricing for a 100MB Java project:
 | DEEP | ~80,000 | ~10,000 | ~$0.80 |
 | BENCHMARK | ~50,000 | ~10,000 | ~$0.60 |
 
-> Costs vary significantly by project size, model choice (Nova vs. Claude), and number of AI stages triggered.
+> Costs vary significantly by project size and number of AI stages invoked. Only `ai_boundaries` and `ai_adrs` call Bedrock; the per-run estimates above assume those two stages with Nova Pro.
 
 ## How Profiles Are Selected
 
@@ -222,13 +222,12 @@ Before Sprint 5.6, all limits were hardcoded as module-level constants across 15
 
 ## Fallback Chain
 
-When an AI stage uses a profile, the 4-level fallback chain is:
+When an AI stage runs, the fallback path (`BaseAIStage` in `backend/app/pipeline/stages/base.py`) is:
 
 ```
-1. Primary AI (Bedrock with profile limits)
-2. Retry with reduced limits (retry with next lower profile)
-3. Deterministic fallback (rule-based with conservative limits)
-4. Empty/safe default
+1. AI invocation (Bedrock via profile limits) → success → result used directly
+2. AI fails (exception) OR returns an empty result → single deterministic fallback, flagged is_degraded=true
+3. Pipeline continues → manifest reports degraded stages + deterministic fallback count
 ```
 
-This is implemented in `BaseAIStage` (`backend/app/pipeline/stages/base.py`) which all 12 pipeline stages extend.
+This is a 2-step chain — there is no "retry with a lower profile" step. `BaseAIStage` is extended by the six `ai_*` pipeline stages (`ai_boundaries`, `ai_readiness`, `ai_adrs`, `ai_migration`, `ai_cost`, `ai_explainability`); the other six stages are non-AI and do not extend it.

@@ -90,10 +90,10 @@ export function CompletedTable({ jobs }: CompletedTableProps) {
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/jobs/${item.id}/results`)}>
             <ExternalLink className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button variant="ghost" size="icon" className="h-8 w-8" disabled title="Coming soon">
             <FileText className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Button variant="ghost" size="icon" className="h-8 w-8" disabled title="Coming soon">
             <Download className="w-3.5 h-3.5" />
           </Button>
         </div>

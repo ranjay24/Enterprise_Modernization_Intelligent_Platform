@@ -98,16 +98,16 @@ export const RecommendationCard = React.memo(function RecommendationCard({ data 
 
         {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-[var(--border-subtle)]">
-          <Button variant="ghost" size="sm" className="gap-1.5 text-[11px] h-7 px-2">
+          <Button variant="ghost" size="sm" className="gap-1.5 text-[11px] h-7 px-2" disabled title="Coming soon">
             <FileText className="w-3 h-3" /> Generate ADR
           </Button>
-          <Button variant="ghost" size="sm" className="gap-1.5 text-[11px] h-7 px-2">
+          <Button variant="ghost" size="sm" className="gap-1.5 text-[11px] h-7 px-2" disabled title="Coming soon">
             <Terminal className="w-3 h-3" /> Generate Terraform
           </Button>
-          <Button variant="ghost" size="sm" className="gap-1.5 text-[11px] h-7 px-2">
+          <Button variant="ghost" size="sm" className="gap-1.5 text-[11px] h-7 px-2" disabled title="Coming soon">
             <Code2 className="w-3 h-3" /> Generate Skeleton
           </Button>
-          <Button variant="ghost" size="sm" className="gap-1.5 text-[11px] h-7 px-2 ml-auto">
+          <Button variant="ghost" size="sm" className="gap-1.5 text-[11px] h-7 px-2 ml-auto" disabled title="Coming soon">
             <ExternalLink className="w-3 h-3" /> Details
           </Button>
         </div>

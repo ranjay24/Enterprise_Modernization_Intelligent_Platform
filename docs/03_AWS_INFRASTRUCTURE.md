@@ -204,6 +204,8 @@ jobs/{job_id}/artifacts/manifest.json  → Final manifest
 | **Bus** | `emip-events-dev` |
 | **Events** | Pipeline lifecycle: started, stage_completed, completed, failed, paused, cancelled |
 
+**Wiring (SAM template):** a rule `emip-pipeline-notifications-<env>` matches terminal + failure events (`pipeline.completed`, `pipeline.failed`, `pipeline.stage.failed`) on the custom bus and forwards them to the SNS topic via a `Target`. A `NotificationTopicPolicy` grants the event bus's service principal `sns:Publish` on the topic (scoped by `aws:SourceArn`). An email `Subscription` is created only when the `NotificationEmail` parameter is set — confirm the pending subscription in the AWS console after deploy. Backend publishes events via `app/services/events.py` → `app/aws/eventbridge.py`.
+
 **Event schema:**
 ```json
 {
@@ -262,7 +264,7 @@ jobs/{job_id}/artifacts/manifest.json  → Final manifest
 
 ## Deployment
 
-### SAM (Primary)
+### SAM (canonical)
 
 ```bash
 cd infrastructure
@@ -271,14 +273,12 @@ sam deploy --guided
 # Uses template.yaml and samconfig.toml
 ```
 
-### CDK (Alternative)
+### CDK (Experimental / Legacy — do not deploy)
 
-```bash
-cd infrastructure
-npx cdk bootstrap
-npx cdk deploy EMIP-Backend
-# Uses cdk_stacks/
-```
+`infrastructure/app.py` is kept for reference only and is NOT a supported
+deployment path: it lacks the SQS worker, DLQ, SNS and EventBridge resources,
+and its ALB is HTTP-only. Resources use RETAIN removal policies. Use SAM
+above.
 
 ---
 
@@ -321,6 +321,9 @@ npx cdk deploy EMIP-Backend
 | `WORKER_CONCURRENCY` | 10 | Max concurrent workers |
 | `CHECKPOINT_ENABLED` | true | Enable checkpointing |
 | `ARTIFACT_VERSION` | 1.0.0 | Artifact format version |
+| `AWS_PRICING_ENABLED` | false | Use AWS Pricing API for `ai_cost` infra rates (falls back to fixed formulas when off/offline) |
+| `AWS_PRICING_REGION` | us-east-1 | Region for the Pricing API client (global endpoint: us-east-1 or ap-south-1) |
+| `AWS_PRICING_CACHE_TTL` | 86400 | Pricing rate cache TTL (seconds) |
 
 ---
 

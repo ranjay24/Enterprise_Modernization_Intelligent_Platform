@@ -172,7 +172,7 @@ Layer 6: [report_generation, manifest]                        ← parallel
 | **Input** | static_analysis classes/endpoints/deps + enterprise_analysis candidate_services/bounded_contexts |
 | **Output** | `services[]` with name, description, cohesion/coupling scores, classes, packages, API endpoints, confidence, readiness, risk |
 | **Dependencies** | static_analysis, enterprise_analysis |
-| **Requires AI** | Yes |
+| **Requires AI** | Yes — invokes Bedrock (Nova Pro) |
 | **Key logic** | Delegates to `app.ai.orchestrator.analyze_service_boundaries()` — builds service candidates from enterprise analysis, enriches with class data and endpoint data, produces confidence-scored service boundaries. If AI discovery fails, falls back to a monolith service from all classes |
 | **Fallback** | `{"services": [], "summary": "Boundary detection unavailable"}` |
 | **File** | `backend/app/pipeline/stages/ai_boundaries.py:AIBoundariesStage` |
@@ -187,7 +187,7 @@ Layer 6: [report_generation, manifest]                        ← parallel
 | **Input** | static_analysis metrics + enterprise_analysis readiness scores |
 | **Output** | 6 dimensions: code_quality, architecture, cloud_readiness, service_separation, database_coupling, documentation. Each with score + evidence |
 | **Dependencies** | static_analysis, enterprise_analysis |
-| **Requires AI** | Yes |
+| **Requires AI** | No — deterministic scoring (model id `sprint3-deterministic`) |
 | **Key logic** | Maps Sprint 2 readiness dimensions (compute, database, networking, etc.) to frontend-expected dimensions (code_quality, architecture, etc.). Uses actual metrics: god class penalty, circular dep penalty, package structure, entity count |
 | **Fallback** | `DEFAULT_READINESS` (all dimensions at 50, overall 50, confidence 0.6) |
 | **File** | `backend/app/pipeline/stages/ai_readiness.py:AIReadinessStage` |
@@ -202,7 +202,7 @@ Layer 6: [report_generation, manifest]                        ← parallel
 | **Input** | Service boundaries + static analysis data |
 | **Output** | `adrs[]` — each with title, context, decision, alternatives, tradeoffs, consequences |
 | **Dependencies** | static_analysis, enterprise_analysis, ai_boundaries |
-| **Requires AI** | Yes |
+| **Requires AI** | Yes — invokes Bedrock (Nova Pro) |
 | **Key logic** | Calls `app.ai.orchestrator.generate_adrs()` → delegates to `AIService.generate_adrs()` → `AIADRGenerator` which produces typed ADR contracts (`app.ai.contracts.adr`) |
 | **Fallback** | `{"adrs": []}` |
 | **File** | `backend/app/pipeline/stages/ai_adrs.py:AIADRStage` |
@@ -217,7 +217,7 @@ Layer 6: [report_generation, manifest]                        ← parallel
 | **Input** | Service boundaries + readiness scores |
 | **Output** | `waves[]` with wave_number, name, services, timeline_weeks, estimated_engineers, dependencies, risk_level, migration_complexity |
 | **Dependencies** | ai_boundaries, ai_readiness |
-| **Requires AI** | Yes |
+| **Requires AI** | No — deterministic algorithm (model id `sprint3-deterministic`) |
 | **Key logic** | Sorts services by confidence (highest first = easiest to extract). For each service: calculates timeline (2-12 weeks based on class count), engineers needed (2-8 based on class count), risk level from coupling and confidence, and dependency ordering |
 | **Fallback** | `{"waves": [], "total_weeks": 0, "recommended_order": []}` |
 | **File** | `backend/app/pipeline/stages/ai_migration.py:AIMigrationStage` |
@@ -232,8 +232,8 @@ Layer 6: [report_generation, manifest]                        ← parallel
 | **Input** | Static analysis metrics + service boundaries |
 | **Output** | `current_monthly`, `post_migration_monthly`, `monthly_savings`, `annual_savings`, `one_time_cost`, `payback_months`, breakdowns |
 | **Dependencies** | static_analysis, enterprise_analysis, ai_boundaries |
-| **Requires AI** | Yes |
-| **Key logic** | Determines base infrastructure cost from total LOC ($1.50/1000 LOC), operations cost from class count ($0.80/class). Post-migration assumes 45% infra savings, 25% ops savings. One-time cost based on god classes * $500 + circular deps * $300 + services * $1000 |
+| **Requires AI** | No — deterministic estimate (model id `sprint3-deterministic`); never calls Bedrock |
+| **Key logic** | Infrastructure cost comes from **real AWS Pricing API on-demand rates** (t3.medium, db.t3.small, gp3) for an assumed footprint when `EMIP_AWS_PRICING_ENABLED=true` + credentials + known region; otherwise falls back to `$1.50/1000 LOC` formula. Operations `$0.80/class` and maintenance are fixed engineering-labor formulas. Post-migration assumes 45% infra savings, 25% ops savings. One-time cost = god classes * $500 + circular deps * $300 + services * $1000. `migration_impact.pricing_source` = `aws-pricing-api` or `estimate-formulas` |
 | **Fallback** | `DEFAULT_COST` (all zeros, payback 24 months) |
 | **File** | `backend/app/pipeline/stages/ai_cost.py:AICostStage` |
 
@@ -247,7 +247,7 @@ Layer 6: [report_generation, manifest]                        ← parallel
 | **Input** | Service boundaries + readiness + analysis data |
 | **Output** | `recommendations[]` with service, confidence, primary_reason, secondary_reasons, evidence, migration_complexity + `business_capabilities[]` |
 | **Dependencies** | static_analysis, enterprise_analysis, ai_boundaries, ai_readiness |
-| **Requires AI** | Yes |
+| **Requires AI** | No — deterministic reasoning (model id `sprint3-deterministic`) |
 | **Key logic** | For each service boundary: builds evidence from classes, packages, cohesion, coupling. Generates primary/secondary reasons. Extracts business capabilities from bounded contexts |
 | **Fallback** | `{"recommendations": [], "business_capabilities": [], "risk_heatmap": []}` |
 | **File** | `backend/app/pipeline/stages/ai_explainability.py:AIExplainabilityStage` |
@@ -364,7 +364,7 @@ The `DAGBuilder` (`backend/app/scheduling/dag.py`):
 
 ## Failure Handling
 
-### 4-Level Fallback Chain
+### Fallback Chain (2-step)
 
 Implemented in `BaseAIStage.execute()` (`backend/app/pipeline/stages/base.py`):
 
@@ -372,16 +372,18 @@ Implemented in `BaseAIStage.execute()` (`backend/app/pipeline/stages/base.py`):
 class BaseAIStage(PipelineStage):
     def execute(self, context: PipelineContext) -> Artifact:
         try:
-            result, model_id = self.execute_ai(context)        # Level 1: AI
+            result, model_id = self.execute_ai(context)        # Step 1: AI
             if not result:
-                result = self.fallback()                        # Level 2: empty → fallback
+                result = self.fallback()                        # empty → deterministic fallback
                 is_degraded = True
         except Exception:
-            result = self.fallback()                            # Level 3: error → fallback
+            result = self.fallback()                            # error → deterministic fallback
             is_degraded = True
-        # Level 4: pipeline continues with degraded flag
+        # Step 2 complete: pipeline continues with degraded flag
         return Artifact(metadata=..., is_degraded=is_degraded, ...)
 ```
+
+This is a 2-step chain (AI → single deterministic fallback). There is no retry-with-reduced-context step.
 
 Each AI stage defines:
 - `execute_ai()` — the AI invocation (may raise or return empty)

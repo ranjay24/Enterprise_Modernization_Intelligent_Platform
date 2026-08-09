@@ -2,7 +2,7 @@
   "Parameters": {
     "Environment": "dev",
     "LogLevel": "DEBUG",
-    "DynamoDBJobsTable": "emip-jobs",
-    "DynamoDBAnalysisTable": "emip-analysis"
+    "DynamoDBJobsTable": "emip-jobs-dev",
+    "DynamoDBAnalysisTable": "emip-analysis-dev"
   }
 }

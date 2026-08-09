@@ -1,11 +1,17 @@
 import api from './api';
-import type { JobResponse, AnalysisResult, DeployResponse, CodeGenStatus, ArchitectureDesign, CodeGenPlan, CodeGenCodeResponse, ReviewReport } from '@/types';
+import type { JobResponse, AnalysisResult, CodeGenStatus, ArchitectureDesign, CodeGenPlan, CodeGenCodeResponse, ReviewReport } from '@/types';
 
-export async function uploadCodebase(file: File): Promise<JobResponse> {
+export async function uploadCodebase(
+  file: File,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<JobResponse> {
   const formData = new FormData();
   formData.append('file', file);
   const { data } = await api.post('/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (e) => {
+      const total = e.total && e.total > 0 ? e.total : file.size;
+      if (total > 0) onProgress?.(e.loaded, total);
+    },
   });
   return data;
 }
@@ -45,18 +51,8 @@ export async function cancelJob(jobId: string): Promise<JobResponse> {
   return data;
 }
 
-export async function deleteJob(jobId: string): Promise<{ status: string; job_id: string }> {
-  const { data } = await api.delete(`/jobs/${jobId}`);
-  return data;
-}
-
 export async function deleteAllJobs(): Promise<{ status: string; count: number }> {
   const { data } = await api.delete('/jobs');
-  return data;
-}
-
-export async function deployService(jobId: string, serviceName: string): Promise<DeployResponse> {
-  const { data } = await api.post('/deploy', { job_id: jobId, service_name: serviceName });
   return data;
 }
 

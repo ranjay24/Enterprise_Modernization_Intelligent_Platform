@@ -185,6 +185,6 @@ class BoundaryRuleEngine:
         return violations
     
     def would_violate(self, services: list[dict], class_by_name: dict, check_rules: Optional[list[str]] = None) -> bool:
-        \"\"\"Quick check if current state has errors (not warnings).\"\"\"
+        """Quick check if current state has errors (not warnings)."""
         violations = self.validate(services, class_by_name)
         return any(v.severity == 'error' for v in violations)

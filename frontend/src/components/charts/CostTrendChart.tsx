@@ -1,16 +1,28 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { ChartDataPoint } from '@/types/dashboard';
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface TooltipEntry {
+  name?: string | number;
+  value?: number | string;
+  color?: string;
+}
+
+interface CostTrendTooltipProps {
+  active?: boolean;
+  payload?: TooltipEntry[];
+  label?: string | number;
+}
+
+const CustomTooltip = ({ active, payload, label }: CostTrendTooltipProps) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl shadow-lg p-3 text-xs">
       <p className="font-semibold text-[var(--text-primary)] mb-1.5">{label}</p>
-      {payload.map((entry: any) => (
-        <div key={entry.name} className="flex items-center gap-2 py-0.5">
+      {payload.map((entry) => (
+        <div key={String(entry.name)} className="flex items-center gap-2 py-0.5">
           <span className="w-2 h-2 rounded-full" style={{ background: entry.color }} />
           <span className="text-[var(--text-muted)]">{entry.name}:</span>
-          <span className="font-medium text-[var(--text-primary)]">${entry.value.toLocaleString()}</span>
+          <span className="font-medium text-[var(--text-primary)]">{Number(entry.value).toLocaleString()}</span>
         </div>
       ))}
     </div>

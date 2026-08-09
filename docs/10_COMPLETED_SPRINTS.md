@@ -28,7 +28,7 @@ AWS resource provisioning via SAM and CDK.
 - **API Gateway:** REST API with Lambda proxy integration
 - **SQS + DLQ:** Analysis job queue with dead-letter queue
 - **SNS:** Notification topic for job events
-- **DynamoDB:** `emip-jobs` and `emip-analysis` tables with GSI
+- **DynamoDB:** `emip-jobs` and `emip-analysis` tables (no GSI; `list_jobs` uses a Scan)
 - **S3:** Artifact bucket with SSE encryption
 - **IAM:** Least-privilege roles for Lambda, API Gateway, SQS, Bedrock
 - **CloudWatch:** Log groups, metrics, alarms
@@ -103,12 +103,10 @@ Amazon Bedrock integration with provider abstraction.
 - **Explainability** — AI reasoning traceability
 - **Business capability detection** — `backend/app/analysis/scanner/detectors.py`
 - **AI orchestration** — `backend/app/ai/orchestrator.py` — Multi-stage AI coordination
-- **4-level fallback chain:**
-  1. Primary AI invocation
-  2. Retry with reduced context
-  3. Deterministic fallback (rule-based)
-  4. Safe default
-- **Deterministic fallback mode** — All AI stages can operate without Bedrock
+- **Fallback chain (2-step, in `BaseAIStage`):**
+  1. AI succeeds → result used directly
+  2. AI fails (exception or empty result) → single deterministic fallback, flagged `is_degraded=true`; manifest reports degraded stages
+- **Deterministic fallback mode** — All AI stages can operate without Bedrock; `ai_readiness`, `ai_migration`, `ai_cost`, `ai_explainability` are deterministic-by-design (`sprint3-deterministic`)
 
 **Tests:** AI provider tests, prompt builder tests, guardrail tests, fallback chain tests.
 
@@ -168,7 +166,7 @@ Comprehensive validation of infrastructure, API, and failure modes.
 - **CloudWatch/X-Ray monitoring** — Log format verification, trace validation
 - **3 bugs found and fixed:**
   1. Race condition in parallel scheduler's `_mark_completed` when stages complete simultaneously
-  2. GSI `status-created_at-index` missing in `template.yaml` — DynamoDB `update` queries failed
+  2. Jobs listing without a GSI — `list_jobs` ran a full Scan; added in-memory sorting on `created_at` (`backend/app/aws/dynamodb.py`)
   3. `CheckpointManager` cleared checkpoints on resume intent instead of after successful resume
 
 **Tests:** 249+ tests total across all test suites.
@@ -196,7 +194,7 @@ Dynamic analysis profiles replacing hardcoded limits.
 | Bug | Sprint | Root Cause | File | Fix |
 |---|---|---|---|---|
 | Race condition in parallel scheduler | 5.5 | Non-atomic state check in `_mark_completed` | `backend/app/scheduling/parallel_scheduler.py` | Added lock around completion check |
-| Missing GSI in SAM template | 5.5 | `status-created_at-index` omitted from template | `infrastructure/sam/template.yaml` | Added GSI definition |
+| Jobs list without GSI | 5.5 | Jobs table had no `status-created_at-index`; `list_jobs` needed a Scan | `backend/app/aws/dynamodb.py` | Jobs table uses `job_id` PK; `list_jobs` uses a Scan with in-memory sort (no GSI exists in `infrastructure/template.yaml`) |
 | Checkpoint cleared on resume intent | 5.5 | `clear_checkpoint()` called before resume validation | `backend/app/routes/analyze.py:57` | Moved clear after `has_checkpoint` check |
 | Hardcoded limits across 15+ files | 5.6 | Limits defined as module-level constants | `backend/analysis/rules/*.py`, `backend/ai/*.py`, etc. | Replaced with `get_profile_for_settings()` |
 | BENCHMARK mode didn't account for output tokens | 5.6 | `prompt_max_tokens` set to full context window | `backend/app/core/analysis_profile.py` | Reserved 2000 tokens for output |

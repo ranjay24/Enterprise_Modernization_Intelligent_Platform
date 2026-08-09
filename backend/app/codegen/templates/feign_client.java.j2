@@ -13,7 +13,7 @@ public interface {{ client_class }} {
 
     @Retry(name = "default")
     @CircuitBreaker(name = "default", fallbackMethod = "fallbackFindAll")
-    @GetMapping("/internal/{{ resource_path }}")
+    @GetMapping("/{{ resource_path }}")
     List<Object> findAll();
 
     default List<Object> fallbackFindAll(Throwable t) {

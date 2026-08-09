@@ -21,6 +21,7 @@ class AWSClients:
         self._cloudwatch_client = None
         self._sts_client = None
         self._events_client = None
+        self._pricing_client = None
 
     @property
     def sts(self):
@@ -107,6 +108,16 @@ class AWSClients:
         return self._events_client
 
     @property
+    def pricing(self):
+        if self._pricing_client is None:
+            self._pricing_client = boto3.client(
+                "pricing",
+                region_name=self._settings.aws_pricing_region,
+                config=Config(retries={"max_attempts": 3, "mode": "adaptive"}),
+            )
+        return self._pricing_client
+
+    @property
     def s3_bucket_name(self) -> str:
         return self._settings.s3_bucket
 
@@ -128,3 +139,4 @@ class AWSClients:
         self._sns_client = None
         self._cloudwatch_client = None
         self._events_client = None
+        self._pricing_client = None

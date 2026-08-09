@@ -26,7 +26,7 @@ public class {{ event_listener_class }} {
 
 {% for topic in publish_topics %}
     @KafkaListener(topics = "{{ topic }}", groupId = "{{ service_id }}-group")
-    public void on{{ topic }}(Map<String, Object> message) {
+    public void on{{ topic | method }}(Map<String, Object> message) {
         log.info("consumed_event topic={} message={}", "{{ topic }}", message);
     }
 {% endfor %}

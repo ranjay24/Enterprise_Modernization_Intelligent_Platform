@@ -16,6 +16,8 @@ class JobDomain:
     progress: int = 0
     current_phase: str | None = None
     error: str | None = None
+    # Sprint 5 — codegen progress persistence (P2.4)
+    codegen_stage: str | None = None
     # Sprint 4 — async pipeline
     checkpoint_phase: str | None = None
     retry_count: int = 0
@@ -36,6 +38,7 @@ class JobDomain:
             "progress": self.progress,
             "current_phase": self.current_phase,
             "error": self.error,
+            "codegen_stage": self.codegen_stage,
             "checkpoint_phase": self.checkpoint_phase,
             "retry_count": self.retry_count,
             "worker_id": self.worker_id,
@@ -57,6 +60,7 @@ class JobDomain:
             progress=data.get("progress", 0),
             current_phase=data.get("current_phase"),
             error=data.get("error"),
+            codegen_stage=data.get("codegen_stage"),
             checkpoint_phase=data.get("checkpoint_phase"),
             retry_count=data.get("retry_count", 0),
             worker_id=data.get("worker_id"),

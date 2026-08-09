@@ -14,6 +14,7 @@ from app.artifacts.version import ArtifactVersioner
 from app.aws.s3 import S3Repository
 from app.pipeline.context import PipelineContext
 from app.pipeline.stage import PipelineStage
+from app.utils.zip_utils import ZipSafetyError, _safe_member_path, validate_zip_safety
 
 logger = structlog.get_logger(__name__)
 
@@ -53,16 +54,23 @@ class ExtractionStage(PipelineStage):
                 raise ValueError(f"No ZIP file found for job {job_id}")
 
             # Download ZIP
-            tmp_zip = tempfile.mktemp(suffix=".zip")
-            s3_repo.client.download_file(s3_repo.bucket, zip_key, tmp_zip)
+            fd, tmp_zip = tempfile.mkstemp(suffix=".zip")
+            os.close(fd)
+            try:
+                s3_repo.client.download_file(s3_repo.bucket, zip_key, tmp_zip)
 
-            # Capture file size BEFORE extraction and deletion
-            zip_size_bytes = os.path.getsize(tmp_zip)
+                # Capture file size BEFORE extraction and deletion
+                zip_size_bytes = os.path.getsize(tmp_zip)
 
-            # Extract
-            extract_dir = tempfile.mkdtemp()
-            with zipfile.ZipFile(tmp_zip, "r") as zf:
-                zf.extractall(extract_dir)
+                # Extract
+                extract_dir = tempfile.mkdtemp()
+                with zipfile.ZipFile(tmp_zip, "r") as zf:
+                    validate_zip_safety(zf)
+                    for member in zf.infolist():
+                        _safe_member_path(extract_dir, member.filename)
+                        zf.extract(member, extract_dir)
+            except ZipSafetyError as exc:
+                raise ValueError(f"Unsafe ZIP archive: {exc}")
 
             content = {
                 "extracted_path": extract_dir,

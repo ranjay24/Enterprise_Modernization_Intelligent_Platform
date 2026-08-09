@@ -4,13 +4,15 @@ import { Badge } from '@/components/ui/Badge';
 import { ConfidenceBadge } from '@/components/ui/StatusBadge';
 import type { AnalysisResult } from '@/types/api';
 import type { ExplainabilityEntry, ConfidenceFactor } from '@/types/dashboard';
+import type { ExplainabilityData, ExplainabilityRecommendation } from '@/types/metrics';
 
 function buildExplainabilityEntries(analysis: AnalysisResult): ExplainabilityEntry[] {
-  const recs = (analysis.explainability as any)?.recommendations || [];
+  const explainability = (analysis.explainability || {}) as ExplainabilityData;
+  const recs = explainability.recommendations || [];
   const services = analysis.service_boundaries || [];
 
   if (recs.length > 0) {
-    return recs.map((rec: any, i: number) => ({
+    return recs.map((rec: ExplainabilityRecommendation, i: number) => ({
       id: `exp-${i}`,
       service: rec.service,
       primaryReason: rec.primary_reason || 'Service boundary analysis',
@@ -78,7 +80,8 @@ function buildExplainabilityEntries(analysis: AnalysisResult): ExplainabilityEnt
 
 export function ExplainabilityCenter({ analysis }: { analysis: AnalysisResult }) {
   const entries = buildExplainabilityEntries(analysis);
-  const businessCapabilities = (analysis.explainability as any)?.business_capabilities || [];
+  const explainability = (analysis.explainability || {}) as ExplainabilityData;
+  const businessCapabilities = explainability.business_capabilities || [];
 
   return (
     <section>

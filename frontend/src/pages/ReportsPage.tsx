@@ -1,33 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { DollarSign, ArrowRight, BarChart3, FileText, Layers, Brain } from 'lucide-react';
-import { listJobs, getAnalysisResults } from '@/services/jobService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ScoreGauge } from '@/components/cards';
 import { EmptyState } from '@/components/common/EmptyState';
 import { TableSkeleton } from '@/components/common/LoadingSkeleton';
+import { CompletedJobSelector } from '@/components/common/CompletedJobSelector';
+import { useCompletedJobs } from '@/hooks/useCompletedJobs';
 import { formatCurrency } from '@/utils/formatters';
 import { cn } from '@/utils/cn';
-import { Badge } from '@/components/ui/Badge';
 
 export default function ReportsPage() {
-  const { data: jobsData, isLoading: jobsLoading } = useQuery({
-    queryKey: ['jobs'], queryFn: listJobs, staleTime: 30000,
-  });
-
-  const completedJobs = (jobsData?.jobs || []).filter((j) =>
-    ['analysis_complete', 'generation_complete', 'generation_with_warnings'].includes(j.status)
-  );
-  const latestJob = completedJobs[0];
-
-  const { data: results, isLoading: resultsLoading } = useQuery({
-    queryKey: ['analysis', latestJob?.job_id],
-    queryFn: () => getAnalysisResults(latestJob!.job_id),
-    enabled: !!latestJob, staleTime: 60000,
-  });
-
-  const isLoading = jobsLoading || resultsLoading;
+  const { completedJobs, selectedJobId, setSelectedJobId, selectedJob, results, isLoading } = useCompletedJobs();
 
   if (isLoading) return <div className="p-6 lg:p-8 max-w-7xl mx-auto"><TableSkeleton rows={5} /></div>;
 
@@ -50,9 +34,16 @@ export default function ReportsPage() {
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
-      <div>
-        <h1 className="text-display text-foreground mb-1">Reports</h1>
-        <p className="text-body-sm text-muted-foreground">Executive summary and financial analysis</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-display text-foreground mb-1">Reports</h1>
+          <p className="text-body-sm text-muted-foreground">Executive summary and financial analysis</p>
+        </div>
+        <CompletedJobSelector
+          jobs={completedJobs}
+          selectedJobId={selectedJobId}
+          onChange={setSelectedJobId}
+        />
       </div>
 
       {/* Readiness Assessment */}
@@ -144,8 +135,8 @@ export default function ReportsPage() {
         </CardContent>
       </Card>
 
-      {latestJob && (
-        <Link to={`/jobs/${latestJob.job_id}/results`} className="inline-block">
+      {selectedJob && (
+        <Link to={`/jobs/${selectedJob.job_id}/results`} className="inline-block">
           <Button variant="outline" className="gap-2">
             View Full Results <ArrowRight className="w-4 h-4" />
           </Button>

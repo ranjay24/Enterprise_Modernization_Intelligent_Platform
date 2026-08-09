@@ -6,6 +6,7 @@ import threading
 import time
 from collections.abc import Callable
 from concurrent.futures import Future
+from datetime import datetime, timezone
 
 import structlog
 
@@ -57,18 +58,22 @@ class SequentialExecutor:
                         context.state.errors.append({
                             "stage": stage.name,
                             "error": f"Pipeline {current_status} by user",
-                            "duration_ms": 0,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         })
                         break
                 except Exception:
                     pass
 
             if resume_from and stage.name != resume_from and self._is_before(stage.name, resume_from):
-                if not context.state.has_completed(stage.name):
+                if context.get_result(stage.name) is not None:
+                    continue
+                artifact = self._artifact_repo.load(job_id, stage.name)
+                if artifact:
+                    context.set_result(stage.name, artifact)
                     context.state.mark_started(stage.name)
-                    context.state.mark_completed(stage.name)
-                self._restore_artifact(job_id, stage.name, context)
-                continue
+                    context.state.mark_cached(stage.name, artifact.metadata.artifact_id)
+                    continue
+                # No persisted artifact for this stage — fall through and re-execute it.
 
             if context.state.has_completed(stage.name):
                 artifact = self._artifact_repo.load(job_id, stage.name)
@@ -121,13 +126,6 @@ class SequentialExecutor:
         context.state.total_duration_ms = (time.monotonic() - start_time) * 1000
         context.state.finalize()
         return context.state
-
-    def _restore_artifact(self, job_id: str, stage_name: str, context: PipelineContext) -> None:
-        if context.get_result(stage_name) is not None:
-            return
-        artifact = self._artifact_repo.load(job_id, stage_name)
-        if artifact:
-            context.set_result(stage_name, artifact)
 
     def _is_before(self, stage_a: str, stage_b: str) -> bool:
         names = [s.name for s in self._stages]
@@ -254,7 +252,7 @@ class ParallelExecutor:
                         context.state.errors.append({
                             "stage": f"layer_{layer_idx}",
                             "error": f"Pipeline {current_status} by user",
-                            "duration_ms": 0,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         })
                         cancelled = True
                         break
@@ -283,7 +281,7 @@ class ParallelExecutor:
                             context.state.errors.append({
                                 "stage": stage_name,
                                 "error": str(exc),
-                                "duration_ms": 0,
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
                             })
 
             layer_elapsed = (time.monotonic() - layer_start) * 1000
@@ -358,7 +356,7 @@ class ParallelExecutor:
                 context.state.errors.append({
                     "stage": stage.name,
                     "error": str(exc),
-                    "duration_ms": elapsed,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
 
             timing = StageTiming(
@@ -378,13 +376,12 @@ class ParallelExecutor:
         context: PipelineContext,
         stage_map: dict[str, PipelineStage],
     ) -> None:
-        dag = DAGBuilder(self._stages).build()
         for stage in self._stages:
             if stage.name == resume_from:
                 break
-            context.state.mark_started(stage.name)
-            context.state.mark_completed(stage.name)
             artifact = self._artifact_repo.load(job_id, stage.name)
-            if artifact:
-                context.set_result(stage.name, artifact)
-                context.state.mark_cached(stage.name, artifact.metadata.artifact_id)
+            if artifact is None:
+                continue
+            context.set_result(stage.name, artifact)
+            context.state.mark_started(stage.name)
+            context.state.mark_cached(stage.name, artifact.metadata.artifact_id)

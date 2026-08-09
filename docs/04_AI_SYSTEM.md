@@ -6,7 +6,9 @@
 
 ## Overview
 
-The AI layer provides intelligent analysis for the pipeline via Amazon Bedrock (Nova Pro, Nova Lite, Nova Micro). It is designed around a provider abstraction pattern with a 4-level fallback chain, ensuring the pipeline never hard-fails on AI errors.
+The AI layer provides intelligent analysis for the pipeline via Amazon Bedrock (Nova Pro, Nova Lite, Nova Micro). It is designed around a provider abstraction pattern with a 2-step fallback (AI → single deterministic fallback) implemented in `BaseAIStage`, ensuring the pipeline never hard-fails on AI errors.
+
+Only two pipeline stages actually invoke Bedrock — `ai_boundaries` and `ai_adrs`. The other `ai_*` stages (`ai_readiness`, `ai_migration`, `ai_cost`, `ai_explainability`) are deterministic-by-design and report model id `sprint3-deterministic`; they never call a foundation model. See `KNOWN_LIMITATIONS.md` at the repo root.
 
 ### Key Files
 
@@ -107,11 +109,10 @@ graph TB
         NOVA["NovaAdapter<br/>Bedrock Converse API"]
     end
 
-    subgraph FallbackChain["4-Level Fallback Chain"]
-        L1["Level 1: AI succeeds<br/>→ result used directly"]
-        L2["Level 2: AI fails<br/>→ deterministic fallback"]
-        L3["Level 3: empty result<br/>→ pipeline continues"]
-        L4["Level 4: degraded flag<br/>→ manifest reports"]
+    subgraph FallbackChain["Fallback Chain (2-step)"]
+        STEP1["Step 1: AI succeeds<br/>→ result used directly"]
+        STEP2["Step 2: AI fails or empty<br/>→ deterministic fallback, is_degraded=true"]
+        STEP3["Pipeline continues<br/>→ manifest reports degraded stages"]
     end
 
     subgraph Models["Foundation Models"]
@@ -260,7 +261,8 @@ class ProviderFactory:
     def create(self, config: AIModelConfig) -> AIModelAdapter:
         if "nova" in config.provider:
             return NovaAdapter(config)
-        # Supports Claude, Mistral, Llama adapters
+        # Capability metadata exists for Claude/Mistral/Llama, but only
+        # Nova is registered at runtime (factory.py: bedrock → NovaAdapter)
 
 class ProviderRegistry:
     def invoke(self, request: AIModelRequest, model_id: str | None = None) -> AIModelResponse:
@@ -287,11 +289,10 @@ flowchart TD
     style CONTINUE fill:#3498db,color:#fff
 ```
 
-**4 levels:**
+**Fallback (2-step, in `BaseAIStage`):**
 1. AI succeeds → result used directly
-2. AI fails (exception/empty) → deterministic fallback
-3. Empty fallback → pipeline continues
-4. All stages complete → manifest reports degraded stages
+2. AI fails (exception or empty result) → deterministic fallback, `is_degraded=true`; pipeline continues
+3. Manifest reports degraded stages and deterministic fallback count
 
 ---
 

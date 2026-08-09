@@ -231,13 +231,14 @@ Analyzer (ABC)
 
 Every pipeline stage produces a versioned, compressed `Artifact` stored in S3 with DynamoDB metadata. Artifacts enable checkpoint/resume and provide full traceability.
 
-### 3. Degraded Mode (4-Level Fallback)
+### 3. Degraded Mode (2-Step Fallback)
 
 All AI stages extend `BaseAIStage` which implements:
 1. **AI succeeds** → result used directly
-2. **AI fails/empty** → deterministic fallback
-3. **Empty result** → pipeline continues with empty data
-4. **Degraded flag** → final manifest reports degraded stages
+2. **AI fails or returns empty** → single deterministic fallback, `is_degraded=true`
+3. **Pipeline continues** → final manifest reports degraded stages and deterministic fallback count
+
+Note: only `ai_boundaries` and `ai_adrs` call Bedrock; the other `ai_*` stages are deterministic-by-design and report model id `sprint3-deterministic`.
 
 ### 4. Checkpoint/Resume
 

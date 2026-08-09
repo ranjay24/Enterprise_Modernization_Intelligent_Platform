@@ -18,8 +18,6 @@ from app.validators.project_validator import validate_job_id
 router = APIRouter()
 logger = structlog.get_logger(__name__)
 
-_active_generations: dict[str, dict] = {}
-
 
 def _is_local() -> bool:
     return os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is None
@@ -31,29 +29,32 @@ def _run_codegen_sync(job_id: str):
     try:
         orchestrator = CodeGenOrchestrator(progress_callback=_progress_callback)
         orchestrator.run(job_id)
-        entry = _active_generations.setdefault(job_id, {"job_id": job_id})
-        entry["status"] = "generation_complete"
-        entry["progress"] = 100
-        entry["current_stage"] = "finalize"
-        job_repo.update_job(job_id=job_id, status="generation_complete", current_phase="code_generation", progress=100)
+        job_repo.update_job(
+            job_id=job_id,
+            status="generation_complete",
+            current_phase="generation_complete",
+            progress=100,
+            codegen_stage="finalize",
+        )
     except Exception as exc:
         logger.error("codegen_sync_failed", job_id=job_id, error=str(exc))
-        _active_generations[job_id] = {
-            "job_id": job_id,
-            "status": "failed",
-            "error": str(exc),
-        }
         try:
-            job_repo.update_job(job_id=job_id, status="failed", error=f"Code generation failed: {exc}")
+            job_repo.update_job(
+                job_id=job_id,
+                status="failed",
+                error=f"Code generation failed: {exc}",
+                codegen_stage="failed",
+            )
         except Exception:
             pass
 
 
 def _progress_callback(job_id: str, progress: int, stage: str):
-    """Track codegen progress in memory for status polling."""
-    entry = _active_generations.setdefault(job_id, {"job_id": job_id})
-    entry["progress"] = progress
-    entry["current_stage"] = stage
+    """Persist codegen progress to DynamoDB so status survives a backend restart."""
+    try:
+        JobRepository().update_job(job_id=job_id, progress=progress, codegen_stage=stage)
+    except Exception:
+        pass
 
 
 @router.post("/codegen/{job_id}/start")
@@ -68,8 +69,13 @@ async def start_code_generation(job_id: str):
             f"Job is in '{job.status}' state — analysis must complete before code generation"
         )
 
-    _active_generations[job_id] = {"job_id": job_id, "status": "generating", "progress": 0}
-    job_repo.update_job(job_id=job_id, status="generating", current_phase="code_generation", progress=0)
+    job_repo.update_job(
+        job_id=job_id,
+        status="generating",
+        current_phase="code_generation",
+        progress=0,
+        codegen_stage="starting",
+    )
 
     if _is_local():
         logger.info("codegen_local_sync", job_id=job_id)
@@ -80,7 +86,10 @@ async def start_code_generation(job_id: str):
         )
         thread.start()
     else:
-        raise ValidationFailedException("SQS-backed code generation is not deployed yet")
+        raise ValidationFailedException(
+            "Code generation runs in local/in-process mode only — the SQS-backed worker is "
+            "not deployed yet. Start the backend locally (AWS_LAMBDA_FUNCTION_NAME unset) to trigger codegen."
+        )
 
     return {"status": "started", "job_id": job_id, "current_phase": "code_generation"}
 
@@ -101,11 +110,16 @@ async def codegen_status(job_id: str):
         if job and job.status != summary.get("status"):
             job_repo.update_job(job_id=job_id, status=summary.get("status"), progress=100)
 
-    # Check job database status
+    # Check job database status (progress/stage persist to DynamoDB, so this
+    # survives a backend restart — P2.4)
     job = job_repo.get_job(job_id)
     in_progress = job.status == "generating" if job else False
-    progress = _active_generations.get(job_id, {}).get("progress", 100 if not in_progress else 0)
-    current_stage = _active_generations.get(job_id, {}).get("current_stage", "finalize" if summary else "idle")
+    progress = job.progress if job else (100 if summary else 0)
+    current_stage = (
+        job.codegen_stage
+        if job and job.codegen_stage
+        else ("finalize" if summary else "idle")
+    )
 
     service_codes = []
     if plan:
@@ -122,6 +136,7 @@ async def codegen_status(job_id: str):
         "summary": summary,
         "review": review,
         "services_generated": service_codes,
+        "service_origins": (summary or {}).get("service_origins", {}),
     }
 
 

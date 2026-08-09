@@ -60,11 +60,11 @@ sequenceDiagram
     Stages->>S3: Write enterprise_analysis artifact
     Pipeline-->>Worker: Stage 3 complete
 
-    Pipeline->>Stages: Execute stages 4-9 (AI stages)
+    Pipeline->>Stages: Execute stages 4-9 (ai_* stages)
     Stages->>Stages: Build prompts from analysis data
-    Stages->>Stages: Invoke Bedrock (Nova Pro)
+    Stages->>Stages: Invoke Bedrock (Nova Pro) — ai_boundaries + ai_adrs only
     Stages->>Stages: Parse & validate AI response
-    Stages->>Stages: Fallback if AI fails
+    Stages->>Stages: Deterministic fallback if AI fails
     Stages->>S3: Write AI artifacts
     Pipeline-->>Worker: AI stages complete
 

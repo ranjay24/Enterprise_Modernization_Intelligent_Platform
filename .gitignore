@@ -11,6 +11,8 @@ htmlcov/
 build/
 .DS_Store
 .venv/
+test-results/
+tests/e2e/results/
 temp-visualizer.json
 *.jsonl
 

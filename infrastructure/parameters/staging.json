@@ -1,0 +1,8 @@
+{
+  "Parameters": {
+    "Environment": "staging",
+    "LogLevel": "INFO",
+    "DynamoDBJobsTable": "emip-jobs-staging",
+    "DynamoDBAnalysisTable": "emip-analysis-staging"
+  }
+}

@@ -19,7 +19,7 @@ class AIModelRequest:
     prompt: str = ""
     system_prompt: str = ""
     max_tokens: int = 8000
-    temperature: float = 0.0
+    temperature: float | None = None
     model_id: str | None = None
     expect_json: bool = False
     metadata: dict = field(default_factory=dict)

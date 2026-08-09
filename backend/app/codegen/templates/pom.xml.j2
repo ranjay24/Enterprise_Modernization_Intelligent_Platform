@@ -72,6 +72,11 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
 {% if uses_kafka %}
         <dependency>
             <groupId>org.springframework.kafka</groupId>

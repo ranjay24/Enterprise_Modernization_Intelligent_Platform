@@ -113,6 +113,7 @@ class Agent:
         model_id: str | None = None,
         expected_fields: list[str] | None = None,
         max_tokens: int | None = None,
+        prompt_id: str | None = None,
     ) -> tuple[Any, dict, bool]:
         """Invoke Bedrock with fallback through the AIEngine.
 
@@ -120,7 +121,7 @@ class Agent:
         """
         def _invoke() -> tuple[Any, dict, bool]:
             return self._engine.invoke_ai_with_fallback(
-                prompt_id=self.prompt_id,
+                prompt_id=prompt_id or self.prompt_id,
                 template_variables=template_variables,
                 fallback_fn=fallback_fn,
                 response_type=response_type,

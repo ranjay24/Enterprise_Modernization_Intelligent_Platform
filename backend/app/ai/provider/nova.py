@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import structlog
 
 from app.ai.provider.adapter import AIModelAdapter, AIModelRequest, AIModelResponse
@@ -28,19 +30,30 @@ class NovaAdapter(AIModelAdapter):
 
     def invoke(self, request: AIModelRequest) -> AIModelResponse:
         model_id = request.model_id or self._config.model_id
-        messages = [{"role": "user", "content": [{"text": request.prompt}]}]
 
+        messages = []
+        if request.system_prompt:
+            messages.append({"role": "system", "content": [{"text": request.system_prompt}]})
+        messages.append({"role": "user", "content": [{"text": request.prompt}]})
+
+        temperature = (
+            request.temperature
+            if request.temperature is not None
+            else self._config.temperature
+        )
         inference_config = {
             "maxTokens": min(request.max_tokens, self._config.max_tokens),
-            "temperature": request.temperature if request.temperature > 0 else self._config.temperature,
+            "temperature": temperature,
         }
 
+        start = time.monotonic()
         try:
             response = self._bedrock.converse(
                 modelId=model_id,
                 messages=messages,
                 inferenceConfig=inference_config,
             )
+            latency_ms = (time.monotonic() - start) * 1000
 
             output = response.get("output", {}).get("message", {}).get("content", [])
             text = output[0]["text"] if output else ""
@@ -54,15 +67,18 @@ class NovaAdapter(AIModelAdapter):
                 model_id=model_id,
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
+                latency_ms=latency_ms,
                 finish_reason=response.get("stopReason", "stop"),
                 raw_response=response,
             )
 
         except Exception as exc:
+            latency_ms = (time.monotonic() - start) * 1000
             logger.warning("nova_invoke_failed", model_id=model_id, error=str(exc))
             return AIModelResponse(
                 text="",
                 model_id=model_id,
+                latency_ms=latency_ms,
                 error=str(exc),
             )
 

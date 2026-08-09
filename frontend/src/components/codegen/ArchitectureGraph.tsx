@@ -11,7 +11,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Database, Radio, Server, GitMerge, Route, Zap } from 'lucide-react';
-import type { ArchitectureDesign } from '@/types';
+import type { ArchitectureDesign, ArchitectureNode } from '@/types';
 import { cn } from '@/utils/cn';
 
 const nodeTypeStyles: Record<string, string> = {
@@ -22,9 +22,9 @@ const nodeTypeStyles: Record<string, string> = {
 };
 
 const edgeTypeStyles: Record<string, { stroke: string; animated: boolean; dash: string }> = {
-  rest: { stroke: 'var(--accent-blue)', animated: false, dash: '' },
-  feign: { stroke: '#f97316', animated: false, dash: '8 4' },
-  database: { stroke: 'var(--border-strong)', animated: false, dash: '' },
+  rest: { stroke: 'var(--accent-blue)', animated: true, dash: '5 5' },
+  feign: { stroke: '#f97316', animated: true, dash: '8 4' },
+  database: { stroke: 'var(--border-strong)', animated: true, dash: '3 6' },
   publish: { stroke: '#ef4444', animated: true, dash: '6 4' },
   subscribe: { stroke: '#ec4899', animated: true, dash: '2 4' },
   queue: { stroke: '#a855f7', animated: true, dash: '4 4' },
@@ -107,7 +107,7 @@ const nodeTypes = { architecture: ArchitectureNode };
 
 interface ArchitectureGraphProps {
   design: ArchitectureDesign;
-  onSelectNode?: (node: any) => void;
+  onSelectNode?: (node: ArchitectureNode) => void;
   height?: string;
 }
 
@@ -145,8 +145,8 @@ export function ArchitectureGraph({ design, onSelectNode, height = 'h-[520px]' }
     [design]
   );
 
-  const onNodeClick = (_: any, node: Node) => {
-    if (onSelectNode) onSelectNode(node.data.design);
+  const onNodeClick = (_: unknown, node: Node) => {
+    if (onSelectNode) onSelectNode(node.data.design as ArchitectureNode);
   };
 
   return (
@@ -167,7 +167,7 @@ export function ArchitectureGraph({ design, onSelectNode, height = 'h-[520px]' }
         <MiniMap
           className="!border-[var(--border-subtle)]"
           nodeColor={(n) => {
-            const t = (n as any).data?.design?.type;
+            const t = n.data?.design?.type;
             if (t === 'gateway') return 'var(--accent-purple)';
             if (t === 'database') return 'var(--analytics)';
             if (t === 'broker') return 'var(--warning)';

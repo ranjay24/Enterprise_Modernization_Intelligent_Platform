@@ -3,6 +3,8 @@
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # ─── SQS Repository ───
 
 class TestSQSRepository:
@@ -252,7 +254,7 @@ class TestWorkerHandler:
         assert result["statusCode"] == 200
         mock_handle.assert_called_once_with("job-002", report_type="full")
 
-    def test_handler_missing_job_id(self):
+    def test_handler_missing_job_id_redrives_to_dlq(self):
         from worker_handler import handler
         event = {
             "Records": [{
@@ -260,11 +262,10 @@ class TestWorkerHandler:
                 "messageId": "msg-003",
             }]
         }
-        result = handler(event, MagicMock())
-        assert result["statusCode"] == 200
-        assert result["body"]["results"][0]["statusCode"] == 400
+        with pytest.raises(RuntimeError):
+            handler(event, MagicMock())
 
-    def test_handler_unknown_action(self):
+    def test_handler_unknown_action_redrives_to_dlq(self):
         from worker_handler import handler
         event = {
             "Records": [{
@@ -272,6 +273,20 @@ class TestWorkerHandler:
                 "messageId": "msg-004",
             }]
         }
-        result = handler(event, MagicMock())
-        assert result["statusCode"] == 200
-        assert result["body"]["results"][0]["statusCode"] == 400
+        with pytest.raises(RuntimeError):
+            handler(event, MagicMock())
+
+    @patch("app.services.workers.analysis_worker.handle_analysis_job")
+    def test_handler_failure_raises_for_sqs_retry(self, mock_handle):
+        from worker_handler import handler
+        mock_handle.side_effect = Exception("boom")
+        event = {
+            "Records": [{
+                "body": json.dumps({"job_id": "job-005", "action": "start_analysis"}),
+                "messageId": "msg-005",
+            }]
+        }
+        # Returning 200 would make SQS delete the message; raising keeps it for
+        # retries so maxReceiveCount: 3 redrives it to the DLQ.
+        with pytest.raises(RuntimeError):
+            handler(event, MagicMock())

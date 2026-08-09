@@ -121,6 +121,9 @@ class PipelineState:
 
     def mark_completed(self, stage_name: str, artifact_key: str = "", artifact_id: str = "") -> None:
         state = self.stages.get(stage_name)
+        was_counted = state is not None and state.status in (
+            PipelineStatus.COMPLETED, PipelineStatus.CACHED
+        )
         if state:
             state.status = PipelineStatus.COMPLETED
             state.completed_at = datetime.now(timezone.utc).isoformat()
@@ -131,7 +134,8 @@ class PipelineState:
                 start = dt.fromisoformat(state.started_at)
                 end = dt.fromisoformat(state.completed_at)
                 state.duration_ms = (end - start).total_seconds() * 1000
-        self.total_artifacts += 1
+        if not was_counted:
+            self.total_artifacts += 1
 
     def mark_failed(self, stage_name: str, error: str) -> None:
         state = self.stages.get(stage_name)
@@ -148,10 +152,14 @@ class PipelineState:
 
     def mark_cached(self, stage_name: str, artifact_key: str = "") -> None:
         state = self.stages.get(stage_name)
+        was_counted = state is not None and state.status in (
+            PipelineStatus.COMPLETED, PipelineStatus.CACHED
+        )
         if state:
             state.status = PipelineStatus.CACHED
             state.artifact_key = artifact_key
-        self.total_artifacts += 1
+        if not was_counted:
+            self.total_artifacts += 1
 
     def has_completed(self, stage_name: str) -> bool:
         state = self.stages.get(stage_name)

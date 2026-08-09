@@ -46,12 +46,25 @@ class CodeGenOrchestrator:
         self._versioner = ArtifactVersioner()
         self._progress_callback = progress_callback
         self._history: list[dict] = []
+        self._service_origins: dict[str, dict] = {}
+        self._max_progress = 0
 
     @property
     def history(self) -> list[dict]:
         return list(self._history)
 
+    @property
+    def service_origins(self) -> dict[str, dict]:
+        """Per-service generation provenance (bedrock vs scaffold fallback)."""
+        return dict(self._service_origins)
+
     def _report(self, job_id: str, progress: int, stage: str):
+        """Report progress, clamped so it never decreases across the loop."""
+        progress = int(progress)
+        if progress < self._max_progress:
+            progress = self._max_progress
+        else:
+            self._max_progress = progress
         if self._progress_callback:
             try:
                 self._progress_callback(job_id, progress, stage)
@@ -147,6 +160,17 @@ class CodeGenOrchestrator:
         code["service_id"] = service_id
         self._save_artifact(job_id, f"service_code_{service_id}", code, agent.name, metadata)
         self._history.append({"agent": agent.agent_id, "service": service_id, "status": "completed", "metadata": metadata})
+
+        ai_files = int(metadata.get("files_ai", 0))
+        scaffold_files = int(metadata.get("files_scaffold", 0))
+        origin = {
+            "used_fallback": bool(metadata.get("used_fallback") or scaffold_files > 0),
+            "files_ai": ai_files,
+            "files_scaffold": scaffold_files,
+            "files_total": int(metadata.get("files_total", ai_files + scaffold_files)),
+            "source": "scaffold" if ai_files == 0 else ("mixed" if scaffold_files > 0 else "bedrock"),
+        }
+        self._service_origins[service_id] = origin
         return code
 
     def _review(self, job_id: str, ctx: dict, codes: list[dict], plan: dict, architecture: dict, iteration: int) -> dict:
@@ -205,7 +229,50 @@ class CodeGenOrchestrator:
             if sid not in seen:
                 ordered.append(svc)
                 seen.add(sid)
+
+        # Assign unique ports when the plan omits them (8080 reserved for the gateway).
+        def _port(value: Any) -> int | None:
+            if isinstance(value, bool):
+                return None
+            if isinstance(value, int):
+                return value
+            if isinstance(value, str) and value.isdigit():
+                return int(value)
+            return None
+
+        for idx, svc in enumerate(ordered):
+            if _port(svc.get("server_port")) is None:
+                svc["server_port"] = 8081 + idx
+
+        # Point feign clients at the target service's allocated port.
+        port_by_id = {
+            codegen_models.normalize_service_id(svc): _port(svc.get("server_port"))
+            for svc in ordered
+        }
+        for svc in ordered:
+            for client in codegen_models._as_list(svc.get("feign_clients")):
+                if not isinstance(client, dict):
+                    continue
+                target = str(client.get("target_service") or "")
+                if "target_port" not in client and port_by_id.get(target):
+                    client["target_port"] = port_by_id[target]
+
         return ordered
+
+    def _finding_matches_service(self, file: str, sid: str, package: str) -> bool:
+        """True when a finding's file reference points at this service.
+
+        Matches the service id, the dotted package (com.emip.orderservice),
+        and the slash-form package (com/emip/orderservice) as it appears in paths.
+        """
+        if sid and sid in file:
+            return True
+        if package:
+            if package in file:
+                return True
+            if package.replace(".", "/") in file:
+                return True
+        return False
 
     def _affected_service_ids(self, findings: list[dict], plan: dict) -> set[str]:
         """Map findings to affected services using the plan's file/package info."""
@@ -214,8 +281,7 @@ class CodeGenOrchestrator:
             sid = codegen_models.normalize_service_id(svc)
             package = str(svc.get("package", ""))
             for f in findings:
-                file = str(f.get("file", ""))
-                if (package and package in file) or sid in file:
+                if self._finding_matches_service(str(f.get("file", "")), sid, package):
                     affected.add(sid)
         return affected
 
@@ -226,7 +292,8 @@ class CodeGenOrchestrator:
         if not ctx["boundaries"]:
             raise ValueError("No service boundaries available — run the analysis pipeline first")
 
-        self._update_job(job_id, status="generating", current_phase="code_generation", progress=10)
+        self._update_job(job_id, status="generating", current_phase="code_generation")
+        self._report(job_id, 10, "starting")
 
         architecture = self._design_architecture(job_id, ctx)
         plan = self._plan(job_id, ctx, architecture, None)
@@ -243,7 +310,11 @@ class CodeGenOrchestrator:
                 sid = codegen_models.normalize_service_id(service_plan, "service")
                 regeneration = None
                 if report:
-                    findings = [f for f in codegen_models.blocking_findings(report) if sid in str(f.get("file", ""))]
+                    package = str(service_plan.get("package", ""))
+                    findings = [
+                        f for f in codegen_models.blocking_findings(report)
+                        if self._finding_matches_service(str(f.get("file", "")), sid, package)
+                    ]
                     if findings:
                         regeneration = {"findings": findings, "iteration": iteration - 1}
                 svc_progress = min(74, 30 + round(40 * (idx + 1) / total))
@@ -294,6 +365,7 @@ class CodeGenOrchestrator:
             "review": report,
             "approved": bool(report and codegen_models.is_approved(report)),
             "history": self._history,
+            "service_origins": dict(self._service_origins),
         }
         self._update_job(
             job_id,

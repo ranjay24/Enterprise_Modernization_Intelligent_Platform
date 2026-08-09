@@ -33,5 +33,5 @@
     "api_gateway": {"name": "EMIP Backend API", "cors": true, "binary_media": true},
     "lambda_layer": {"name": "emip-deps-dev", "version": 6, "contents": ["FastAPI", "Mangum", "structlog", "pydantic", "boto3"]}
   },
-  "deployment_options": ["SAM (primary, template.yaml)", "CDK (alternative, cdk_stacks/backend_stack.py)"]
+  "deployment_options": ["SAM (canonical, template.yaml)", "CDK (experimental/legacy, cdk_stacks/backend_stack.py)"]
 }

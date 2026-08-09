@@ -7,7 +7,7 @@ The EMIP benchmark system measures analysis quality and performance across diffe
 - Validate service boundary quality against known reference architectures
 - Measure pipeline execution performance (sequential vs parallel)
 - Detect regressions after code changes
-- Compare AI model performance (Nova Pro vs Claude vs Llama)
+- Compare Nova model performance (Pro vs Lite vs Micro). Capability metadata exists for Claude/Mistral/Llama, but only Nova has a runtime adapter — those models cannot be invoked
 - Generate prompt statistics for cost optimization
 - Calibrate confidence scores against ground truth
 
@@ -287,6 +287,8 @@ Track token consumption per model:
 | Nova Lite | $0.002 | $0.006 |
 | Claude Sonnet 4 | $0.015 | $0.075 |
 | Claude Haiku 4.5 | $0.008 | $0.040 |
+
+Reference prices for capability planning; the pipeline only invokes Nova models at runtime.
 
 ### Stage Timing
 

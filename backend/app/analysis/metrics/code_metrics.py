@@ -39,15 +39,16 @@ class CodeMetricsAnalyzer(Analyzer):
         god_classes = [c.to_dict() for c in classes if self._is_god_class(c)]
         long_methods = self._find_long_methods(classes)
 
-        all_complexities = []
+        all_complexities = [cplx for c in all_types for cplx in (c.method_complexities or [])]
+        avg_cyclomatic = round(sum(all_complexities) / len(all_complexities), 1) if all_complexities else 0
+
+        method_lengths = []
         for c in all_types:
-            if not c.method_lines:
-                continue
-            for i, m in enumerate(c.method_lines):
-                start = m["start_line"]
-                end = c.method_lines[i + 1]["start_line"] if i + 1 < len(c.method_lines) else c.lines_of_code
-                all_complexities.append(end - start)
-        avg_complexity = round(sum(all_complexities) / len(all_complexities), 1) if all_complexities else 0
+            for m in c.method_lines:
+                length = (m.get("end_line") or 0) - (m.get("start_line") or 0)
+                if length > 0:
+                    method_lengths.append(length)
+        avg_method_length = round(sum(method_lengths) / len(method_lengths), 1) if method_lengths else 0
 
         pkg_tree: dict[str, list[str]] = {}
         for c in all_types:
@@ -78,7 +79,8 @@ class CodeMetricsAnalyzer(Analyzer):
             "largest_classes": largest_classes,
             "god_classes": god_classes,
             "long_methods": long_methods,
-            "avg_cyclomatic_complexity": avg_complexity,
+            "avg_cyclomatic_complexity": avg_cyclomatic,
+            "avg_method_length": avg_method_length,
             "class_type_counts": {
                 "controllers": controller_count, "services": service_count,
                 "repositories": repository_count, "entities": entity_count,
@@ -115,11 +117,9 @@ class CodeMetricsAnalyzer(Analyzer):
         for c in classes:
             if not c.method_lines:
                 continue
-            for i, m in enumerate(c.method_lines):
-                start = m["start_line"]
-                end = c.method_lines[i + 1]["start_line"] if i + 1 < len(c.method_lines) else c.lines_of_code
-                length = end - start
+            for m in c.method_lines:
+                length = (m.get("end_line") or 0) - (m.get("start_line") or 0)
                 if length > 30:
-                    long.append({"class": c.name, "method": m["name"], "line": start, "length": length})
+                    long.append({"class": c.name, "method": m["name"], "line": m["start_line"], "length": length})
         profile = get_profile_for_settings()
         return sorted(long, key=lambda x: x["length"], reverse=True)[:profile.metrics_max_long_methods]

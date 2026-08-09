@@ -170,7 +170,7 @@ export function JobDrawer({ job, open, onClose }: JobDrawerProps) {
                   </Button>
                 )}
                 {job.status === 'failed' && (
-                  <Button variant="outline" className="flex-1">
+                  <Button variant="outline" className="flex-1" disabled title="Coming soon">
                     Retry Analysis
                   </Button>
                 )}

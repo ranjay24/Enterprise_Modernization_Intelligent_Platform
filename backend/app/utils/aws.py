@@ -29,8 +29,8 @@ def get_bedrock_client():
 
 
 def get_s3_bucket() -> str:
-    return os.getenv("S3_BUCKET", "emip-artifacts")
+    return os.getenv("S3_BUCKET", "emip-artifacts-dev")
 
 
 def get_dynamodb_table() -> str:
-    return os.getenv("DYNAMODB_TABLE", "emip-jobs")
+    return os.getenv("DYNAMODB_TABLE", "emip-jobs-dev")

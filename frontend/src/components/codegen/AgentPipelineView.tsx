@@ -47,7 +47,7 @@ export function AgentPipelineView({ steps, iteration, inProgress }: AgentPipelin
                 className={cn(
                   'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors',
                   isDone && 'bg-[var(--success-bg)] text-[var(--success)]',
-                  isRejected && 'bg-[var(--danger-bg)] text-[var(--risk)]',
+                  isRejected && 'bg-[var(--warning)]/15 text-[var(--warning)]',
                   isRunning && 'bg-[var(--info-bg)] text-[var(--accent-blue)]',
                   step.status === 'pending' && 'bg-[var(--border-subtle)]/60 text-[var(--text-muted)]'
                 )}
@@ -62,12 +62,12 @@ export function AgentPipelineView({ steps, iteration, inProgress }: AgentPipelin
                 className={cn(
                   'text-[10px] font-semibold uppercase',
                   isDone && 'text-[var(--success)]',
-                  isRejected && 'text-[var(--risk)]',
+                  isRejected && 'text-[var(--warning)]',
                   isRunning && 'text-[var(--accent-blue)]',
                   step.status === 'pending' && 'text-[var(--text-muted)]'
                 )}
               >
-                {step.status}
+                {step.status === 'rejected' ? 'FEEDBACK' : step.status}
               </span>
             </div>
           );

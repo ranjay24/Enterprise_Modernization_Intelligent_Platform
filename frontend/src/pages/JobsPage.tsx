@@ -32,9 +32,12 @@ function apiJobToDetail(job: JobResponse): JobDetail {
   const statusMap: Record<string, JobExtendedStatus> = {
     uploaded: 'uploading',
     analyzing: 'analyzing',
+    generating: 'analyzing',
     paused: 'paused',
     cancelled: 'cancelled',
     analysis_complete: 'completed',
+    generation_complete: 'completed',
+    generation_with_warnings: 'completed',
     failed: 'failed',
     deployed: 'completed',
   };
@@ -46,8 +49,10 @@ function apiJobToDetail(job: JobResponse): JobDetail {
   let currentStage: string;
   if (job.completed_phases && job.completed_phases.length > 0) {
     completedStages = job.completed_phases;
-    currentStage = phaseIdx >= 0 ? currentPhase : BACKEND_PHASE_ORDER[Math.max(0, job.completed_phases.length)];
-  } else if (job.status === 'analysis_complete') {
+    currentStage = phaseIdx >= 0
+      ? currentPhase
+      : BACKEND_PHASE_ORDER[Math.min(job.completed_phases.length, BACKEND_PHASE_ORDER.length - 1)];
+  } else if (['analysis_complete', 'generation_complete', 'generation_with_warnings'].includes(job.status)) {
     completedStages = [...BACKEND_PHASE_ORDER];
     currentStage = 'report_generation';
   } else if (phaseIdx >= 0) {
@@ -61,8 +66,12 @@ function apiJobToDetail(job: JobResponse): JobDetail {
   let currentTask: string;
   if (job.status === 'analyzing') {
     currentTask = currentPhase ? `Running ${currentPhase}...` : 'Starting analysis...';
+  } else if (job.status === 'generating') {
+    currentTask = currentPhase ? `Generating services (${currentPhase})...` : 'Generating services...';
   } else if (job.status === 'analysis_complete') {
     currentTask = 'Analysis complete';
+  } else if (job.status === 'generation_complete' || job.status === 'generation_with_warnings') {
+    currentTask = 'Code generation complete';
   } else if (job.status === 'paused') {
     currentTask = currentPhase ? `Paused at ${currentPhase}` : 'Paused';
   } else if (job.status === 'cancelled') {
@@ -72,6 +81,8 @@ function apiJobToDetail(job: JobResponse): JobDetail {
   } else {
     currentTask = 'Waiting...';
   }
+
+  const done = ['analysis_complete', 'generation_complete', 'generation_with_warnings'].includes(job.status);
 
   return {
     id: job.job_id,
@@ -83,11 +94,11 @@ function apiJobToDetail(job: JobResponse): JobDetail {
     currentStage,
     progress: job.progress,
     startedAt: job.created_at,
-    completedAt: job.status === 'analysis_complete' ? job.updated_at : null,
-    elapsed: job.status === 'analysis_complete'
+    completedAt: done ? job.updated_at : null,
+    elapsed: done
       ? Math.round((new Date(job.updated_at).getTime() - new Date(job.created_at).getTime()) / 1000)
       : Math.round((Date.now() - new Date(job.created_at).getTime()) / 1000),
-    estimatedRemaining: job.status === 'analysis_complete' ? 0 : 300,
+    estimatedRemaining: done ? 0 : 300,
     currentTask,
     architectureScore: null,
     aiConfidence: null,
@@ -171,7 +182,7 @@ export default function JobsPage() {
   }, [allJobs, search, statusFilter]);
 
   const activeJobs = useMemo(() => filteredJobs.filter((j) => ['queued', 'uploading', 'validating', 'analyzing', 'ai_processing', 'generating', 'generating_report', 'paused'].includes(j.status)), [filteredJobs]);
-  const completedJobs = useMemo(() => filteredJobs.filter((j) => ['analysis_complete', 'generation_complete', 'generation_with_warnings', 'completed'].includes(j.status)), [filteredJobs]);
+  const completedJobs = useMemo(() => filteredJobs.filter((j) => j.status === 'completed'), [filteredJobs]);
   const failedJobs = useMemo(() => filteredJobs.filter((j) => j.status === 'failed'), [filteredJobs]);
 
   const summary = useMemo(() => {
@@ -224,6 +235,13 @@ export default function JobsPage() {
           </Button>
         </Link>
       </div>
+
+      {/* ── Demo notice ── */}
+      {demoMode && (
+        <div className="rounded-xl border border-warning/25 bg-warning/5 px-4 py-3 text-sm text-muted-foreground">
+          Demo Mode is on — the jobs, summary cards, and activity below are sample data.
+        </div>
+      )}
 
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

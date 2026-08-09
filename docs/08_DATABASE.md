@@ -31,11 +31,9 @@ Stores per-job status, progress, and metadata. Each row represents a single uplo
 | `degraded_stages` | List | No | Names of stages that used fallback |
 | `completed_phases` | List | No | Ordered list of completed phase names |
 
-**GSI:**
+**Access patterns (no GSI):**
 
-| Index Name | Partition Key | Sort Key | Purpose |
-|---|---|---|---|
-| `status-created_at-index` | `status` | `created_at` | Query jobs by status, sorted by creation time |
+The Jobs table is keyed on `job_id` only. `get_job`/`update_job` use the primary key; `list_jobs` runs a full Scan and sorts on `created_at` in memory. There is **no** `status-created_at-index` GSI in `infrastructure/template.yaml` — the `status` field is a regular attribute, and status-filtered listing is done client-side.
 
 **Status State Machine:**
 
@@ -145,7 +143,7 @@ sequenceDiagram
 
 | Table | Index | Type | Key(s) | Purpose |
 |---|---|---|---|---|
-| `emip-jobs-{env}` | `status-created_at-index` | GSI | PK: `status`, SK: `created_at` | List jobs by status |
+| `emip-jobs-{env}` | (none) | — | PK: `job_id` | Lookup/update by id; `list_jobs` uses a Scan + in-memory sort |
 | `emip-analysis-{env}` | (none) | — | PK: `job_id`, SK: `analysis_type` | Query all analysis types for a job |
 
 ## Capacity

@@ -63,6 +63,7 @@ class JobRepository:
         current_phase: str = None,
         error: str = None,
         completed_phases: list[str] = None,
+        codegen_stage: str = None,
     ):
 
         now = datetime.now(timezone.utc).isoformat()
@@ -78,6 +79,8 @@ class JobRepository:
             updates["error"] = error
         if completed_phases is not None:
             updates["completed_phases"] = completed_phases
+        if codegen_stage is not None:
+            updates["codegen_stage"] = codegen_stage
 
         update_expr_parts = []
         expr_names = {}

@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/Badge';
 export default function ResultsPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const queryClient = useQueryClient();
-  const { data, isLoading, isError } = useResultsData(jobId);
+  const { data, isLoading, isError, demoMode } = useResultsData(jobId);
 
   if (isLoading) {
     return (
@@ -69,6 +69,15 @@ export default function ResultsPage() {
       >
         <ArrowLeft className="w-4 h-4" /> Back to Jobs
       </Link>
+
+      {demoMode && (
+        <div className="flex items-center gap-2 rounded-xl border border-[var(--warning)]/25 bg-[var(--warning)]/5 px-4 py-3">
+          <Sparkles className="w-4 h-4 text-[var(--warning)] shrink-0" />
+          <p className="text-sm text-[var(--text-secondary)]">
+            Demo Mode is on — these results are <span className="font-semibold text-[var(--text-primary)]">sample data</span>, not from a real analysis.
+          </p>
+        </div>
+      )}
 
       {/* Hero header */}
       <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-6 shadow-sm">

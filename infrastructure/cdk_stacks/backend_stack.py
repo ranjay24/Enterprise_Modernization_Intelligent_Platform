@@ -1,3 +1,10 @@
+"""EXPERIMENTAL / LEGACY CDK stack — do not use for deployments.
+
+SAM (`infrastructure/template.yaml`) is the canonical IaC. This stack is kept
+for reference only; resources below use RETAIN removal policies so no data is
+ever deleted accidentally (previously DESTROY + auto_delete_objects).
+"""
+
 import os
 from aws_cdk import (
     Stack,
@@ -26,8 +33,7 @@ class EMIPBackendStack(Stack):
             self,
             "ArtifactsBucket",
             bucket_name=f"emip-artifacts-{self.account}",
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
+            removal_policy=RemovalPolicy.RETAIN,
             versioned=True,
             encryption=s3.BucketEncryption.S3_MANAGED,
             cors=[
@@ -47,7 +53,7 @@ class EMIPBackendStack(Stack):
                 name="job_id", type=dynamodb.AttributeType.STRING
             ),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=RemovalPolicy.DESTROY,
+            removal_policy=RemovalPolicy.RETAIN,
             point_in_time_recovery=True,
         )
 
@@ -62,7 +68,7 @@ class EMIPBackendStack(Stack):
                 name="analysis_type", type=dynamodb.AttributeType.STRING
             ),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=RemovalPolicy.DESTROY,
+            removal_policy=RemovalPolicy.RETAIN,
         )
 
         self.vpc = ec2.Vpc(
@@ -128,7 +134,7 @@ class EMIPBackendStack(Stack):
             "EMIPLogGroup",
             log_group_name="/emip/backend",
             retention=logs.RetentionDays.TWO_WEEKS,
-            removal_policy=RemovalPolicy.DESTROY,
+            removal_policy=RemovalPolicy.RETAIN,
         )
 
         self.alb = elbv2.ApplicationLoadBalancer(

@@ -51,7 +51,7 @@ export function FailureCard({ job, onRetry }: FailureCardProps) {
             Retry
           </Button>
         )}
-        <Button variant="ghost" size="sm" className="text-muted-foreground">
+        <Button variant="ghost" size="sm" className="text-muted-foreground" disabled title="Coming soon">
           <Download className="w-3.5 h-3.5 mr-1" />
           Download Logs
         </Button>

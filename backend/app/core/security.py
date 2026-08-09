@@ -1,7 +1,10 @@
 """Security utilities and middleware configuration."""
 
-from fastapi import HTTPException, Request
+import hmac
+
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 from app.core.constants import HEALTH_CHECK_PATHS
 from app.core.settings import get_settings
@@ -23,8 +26,11 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         if request.url.path in HEALTH_CHECK_PATHS:
             return await call_next(request)
 
-        api_key = request.headers.get(self.header_name)
-        if api_key != settings.api_key:
-            raise HTTPException(status_code=401, detail="Invalid or missing API key")
+        api_key = request.headers.get(self.header_name) or ""
+        if not hmac.compare_digest(api_key, settings.api_key):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid or missing API key"},
+            )
 
         return await call_next(request)

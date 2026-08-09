@@ -14,6 +14,7 @@ from app.core.settings import get_settings
 from app.services import bedrock_analyzer
 from app.services.analysis_engine import run_analysis as run_sprint2_analysis
 from app.services.static_analyzer import analyze_java_codebase
+from app.utils.zip_utils import ZipSafetyError, _safe_member_path, validate_zip_safety
 
 # Sprint 3: AI layer — imports the new orchestrator with same function signatures
 try:
@@ -229,14 +230,26 @@ def _extract_codebase(s3_repo: S3Repository, job_id: str) -> str:
     if not zip_key:
         raise ValueError("No ZIP file found in job raw directory")
 
-    tmp_zip = tempfile.mktemp(suffix=".zip")
-    s3_repo.client.download_file(s3_repo.bucket, zip_key, tmp_zip)
+    fd, tmp_zip = tempfile.mkstemp(suffix=".zip")
+    os.close(fd)
+    try:
+        s3_repo.client.download_file(s3_repo.bucket, zip_key, tmp_zip)
 
-    extract_dir = tempfile.mkdtemp()
-    with zipfile.ZipFile(tmp_zip, "r") as zf:
-        zf.extractall(extract_dir)
+        extract_dir = tempfile.mkdtemp()
+        with zipfile.ZipFile(tmp_zip, "r") as zf:
+            validate_zip_safety(zf)
+            for member in zf.infolist():
+                _safe_member_path(extract_dir, member.filename)
+                zf.extract(member, extract_dir)
+    except ZipSafetyError as exc:
+        raise ValueError(f"Unsafe ZIP archive: {exc}") from exc
+    finally:
+        if os.path.exists(tmp_zip):
+            try:
+                os.remove(tmp_zip)
+            except OSError:
+                pass
 
-    os.remove(tmp_zip)
     logger.info("codebase_extracted", path=extract_dir)
     return extract_dir
 

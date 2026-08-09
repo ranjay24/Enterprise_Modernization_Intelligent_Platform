@@ -131,11 +131,17 @@ class AICostTracker:
         }
 
     def update_cost_profile(self, model_id: str, input_cost_per_1k: float, output_cost_per_1k: float):
-        """Update cost profile for a model."""
-        self._cost_profiles[model_id] = ModelCostProfile(
+        """Update cost profile for a model.
+
+        Mutates the shared module-level profiles so both instance lookups and
+        static estimate_cost() calls observe the updated pricing.
+        """
+        profile = ModelCostProfile(
             input_cost_per_1k=input_cost_per_1k,
             output_cost_per_1k=output_cost_per_1k,
         )
+        _DEFAULT_COSTS[model_id] = profile
+        self._cost_profiles[model_id] = profile
 
     def _aggregate_by_model(self, records: list[ModelUsageRecord]) -> dict:
         by_model: dict[str, dict] = defaultdict(lambda: {"cost": 0.0, "input_tokens": 0, "output_tokens": 0, "count": 0})

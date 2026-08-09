@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -24,7 +24,7 @@ import {
   getCodeGenReview,
   getJobStatus,
 } from '@/services/jobService';
-import type { CodeGenStatus, ArchitectureDesign, CodeGenPlan, CodeGenCodeResponse, ReviewReport } from '@/types';
+import type { CodeGenStatus, ArchitectureDesign, CodeGenPlan, CodeGenCodeResponse, ReviewReport, ServiceOrigin, CodeGenService } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/common/LoadingSkeleton';
@@ -46,8 +46,30 @@ const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'review', label: 'Review', icon: ShieldAlert },
 ];
 
-function buildAgentSteps(
-  status: CodeGenStatus | undefined,
+function ServiceOriginBadge({ origin }: { origin?: ServiceOrigin }) {
+  const source = origin?.source ?? 'bedrock';
+  if (source === 'bedrock') {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--accent-purple)]/15 text-[var(--accent-purple)] text-[9px] font-medium">
+        <Sparkles className="w-2.5 h-2.5" /> Bedrock
+      </span>
+    );
+  }
+  if (source === 'mixed') {
+    return (
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--warning)]/15 text-[var(--warning)] text-[9px] font-medium" title={`${origin?.files_ai ?? 0} AI / ${origin?.files_scaffold ?? 0} scaffold files`}>
+        <ShieldAlert className="w-2.5 h-2.5" /> Mixed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--danger)]/15 text-[var(--danger)] text-[9px] font-medium" title="Bedrock unavailable or output rejected — deterministic scaffold used">
+      <ShieldAlert className="w-2.5 h-2.5" /> Scaffold
+    </span>
+  );
+}
+
+function buildAgentSteps(status: CodeGenStatus | undefined,
   design: ArchitectureDesign | undefined,
   review: ReviewReport | null | undefined
 ): AgentStep[] {
@@ -65,7 +87,13 @@ function buildAgentSteps(
   const loopFinished = !!summary || stage === 'finalize';
 
   const plannerDone = designDone && (inProgress || loopFinished);
-  const reviewRejected = !!review && !review.approved && (inProgress || loopFinished);
+  // The review agent only shows as "rejected" while the feedback loop is still
+  // running. Once generation finishes, the step is completed even if the final
+  // review carried findings.
+  const reviewRejected = !!review && !review.approved && inProgress;
+  const reviewBlocking = (review?.findings ?? []).filter(
+    (f) => f.severity === 'critical' || f.severity === 'major'
+  ).length;
 
   return [
     {
@@ -93,8 +121,16 @@ function buildAgentSteps(
       id: 'review',
       label: 'Review Agent',
       icon: 'review',
-      detail: reviewRejected ? 'Rejected — feeding back to Planner' : approved ? 'Approved' : 'Validates compilation & consistency',
-      status: reviewRejected ? 'rejected' : approved ? 'completed' : isReviewRunning ? 'running' : 'pending',
+      detail: isReviewRunning
+        ? 'Validating compilation & consistency'
+        : reviewRejected
+          ? 'Rejected — feeding feedback back to Planner'
+          : approved
+            ? 'Approved'
+            : loopFinished && review
+              ? `Completed — ${reviewBlocking} blocking finding${reviewBlocking === 1 ? '' : 's'} fed back`
+              : 'Validates compilation & consistency',
+      status: isReviewRunning ? 'running' : reviewRejected ? 'rejected' : approved || loopFinished ? 'completed' : 'pending',
     },
   ];
 }
@@ -102,8 +138,14 @@ function buildAgentSteps(
 export default function ModernizationStudioPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<Tab>('pipeline');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const t = searchParams.get('tab') as Tab | null;
+    return t && tabs.some((tab) => tab.id === t) ? t : 'pipeline';
+  });
   const [selectedService, setSelectedService] = useState<string>('');
+  // High-water mark so the progress bar never moves backwards mid-run.
+  const progressCeiling = useRef<number | null>(null);
 
   const jobQuery = useQuery({
     queryKey: ['job', jobId],
@@ -169,6 +211,19 @@ export default function ModernizationStudioPage() {
   const isGenerating = status?.in_progress || job?.status === 'generating';
   const isDone = status?.summary?.status === 'generation_complete' || status?.summary?.status === 'generation_with_warnings' || job?.status === 'generation_complete';
 
+  // While a run is active the bar only grows; a fresh run resets the ceiling.
+  const running = !!status?.in_progress;
+  let displayedProgress = status?.progress ?? 0;
+  if (running) {
+    progressCeiling.current =
+      progressCeiling.current === null
+        ? status?.progress ?? 0
+        : Math.max(progressCeiling.current, status?.progress ?? 0);
+    displayedProgress = progressCeiling.current;
+  } else {
+    progressCeiling.current = null;
+  }
+
   useEffect(() => {
     if (status?.services_generated?.length && !selectedService) {
       setSelectedService(status.services_generated[0]);
@@ -233,7 +288,10 @@ export default function ModernizationStudioPage() {
                         : 'border-[var(--border-subtle)] bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                     )}
                   >
-                    {sid}
+                    <span className="inline-flex items-center gap-1.5">
+                      {sid}
+                      <ServiceOriginBadge origin={status?.service_origins?.[sid]} />
+                    </span>
                   </button>
                 ))}
               </div>
@@ -265,7 +323,10 @@ export default function ModernizationStudioPage() {
                       onClick={() => { setSelectedService(s); setActiveTab('code'); }}
                       className="px-2.5 py-1 rounded-lg bg-[var(--success-bg)]/50 text-[var(--success)] text-xs font-medium hover:bg-[var(--success-bg)] transition-colors"
                     >
-                      {s}
+                      <span className="inline-flex items-center gap-1.5">
+                        {s}
+                        <ServiceOriginBadge origin={status.service_origins?.[s]} />
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -324,13 +385,16 @@ export default function ModernizationStudioPage() {
             {isGenerating && (
               <div className="flex items-center gap-2 text-xs text-[var(--accent-blue)]">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                Pipeline running · {status?.progress ?? 0}%
+                Pipeline running · {displayedProgress}%
               </div>
             )}
-            {status?.summary?.approved === false && !isGenerating && (
-              <Badge variant="warning" dot>Review pending — findings fed back to Planner</Badge>
+            {status?.summary?.approved === false && isGenerating && (
+              <Badge variant="warning" dot>Reviewing generated code — feeding findings to Planner</Badge>
             )}
-            {isDone && (
+            {isDone && status?.summary?.approved === false && (
+              <Badge variant="warning" dot>Completed with review findings</Badge>
+            )}
+            {isDone && status?.summary?.approved !== false && (
               <Badge variant="success" dot><CheckCircle2 className="w-3 h-3 mr-1" /> Generation Complete</Badge>
             )}
           </div>
@@ -341,7 +405,7 @@ export default function ModernizationStudioPage() {
             <div className="h-1.5 rounded-full bg-[var(--border-subtle)] overflow-hidden">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-[var(--accent-blue)] to-[var(--accent-purple)] transition-all duration-700"
-                style={{ width: `${status.progress ?? 0}%` }}
+                style={{ width: `${displayedProgress}%` }}
               />
             </div>
             <p className="mt-1.5 text-[10px] text-[var(--text-muted)] capitalize">Stage: {status.current_stage}</p>
@@ -449,7 +513,7 @@ function PlanView({ plan, isLoading }: { plan: CodeGenPlan | null | undefined; i
             <p className="text-xs font-semibold text-[var(--text-primary)]">Service Plans</p>
           </div>
           <div className="divide-y divide-[var(--border-subtle)]">
-            {services.map((svc: any) => (
+            {services.map((svc: CodeGenService) => (
               <div key={svc.id} className="px-4 py-3">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-[var(--text-primary)]">{svc.name || svc.id}</span>

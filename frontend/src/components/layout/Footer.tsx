@@ -11,9 +11,9 @@ export function Footer() {
       <div className="flex items-center gap-3">
         <span>Powered by Amazon Bedrock</span>
         <span className="w-px h-3 bg-[var(--border-subtle)]" />
-        <button className="hover:text-[var(--text-primary)] transition-colors">Privacy</button>
+        <button disabled title="Coming soon" className="hover:text-[var(--text-primary)] transition-colors disabled:cursor-not-allowed">Privacy</button>
         <span className="w-px h-3 bg-[var(--border-subtle)]" />
-        <button className="hover:text-[var(--text-primary)] transition-colors">Terms</button>
+        <button disabled title="Coming soon" className="hover:text-[var(--text-primary)] transition-colors disabled:cursor-not-allowed">Terms</button>
       </div>
     </footer>
   );

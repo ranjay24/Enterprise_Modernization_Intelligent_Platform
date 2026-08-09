@@ -2,13 +2,13 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "SQSDataPlane",
       "Effect": "Allow",
       "Action": [
         "sqs:CreateQueue",
         "sqs:DeleteQueue",
         "sqs:GetQueueAttributes",
         "sqs:GetQueueUrl",
-        "sqs:ListQueues",
         "sqs:SetQueueAttributes",
         "sqs:TagQueue",
         "sqs:UntagQueue",
@@ -18,15 +18,21 @@
         "sqs:DeleteMessage",
         "sqs:PurgeQueue"
       ],
+      "Resource": "arn:aws:sqs:us-east-1:479752407378:emip-*"
+    },
+    {
+      "Sid": "SQSListOnly",
+      "Effect": "Allow",
+      "Action": "sqs:ListQueues",
       "Resource": "*"
     },
     {
+      "Sid": "SNSDataPlane",
       "Effect": "Allow",
       "Action": [
         "sns:CreateTopic",
         "sns:DeleteTopic",
         "sns:GetTopicAttributes",
-        "sns:ListTopics",
         "sns:Publish",
         "sns:TagResource",
         "sns:UntagResource",
@@ -34,15 +40,21 @@
         "sns:Subscribe",
         "sns:Unsubscribe"
       ],
+      "Resource": "arn:aws:sns:us-east-1:479752407378:emip-*"
+    },
+    {
+      "Sid": "SNSListOnly",
+      "Effect": "Allow",
+      "Action": "sns:ListTopics",
       "Resource": "*"
     },
     {
+      "Sid": "EventBridgeDataPlane",
       "Effect": "Allow",
       "Action": [
         "events:CreateEventBus",
         "events:DeleteEventBus",
         "events:DescribeEventBus",
-        "events:ListEventBuses",
         "events:PutEvents",
         "events:PutRule",
         "events:PutTargets",
@@ -54,6 +66,15 @@
         "events:ListRules",
         "events:ListTargetsByRule"
       ],
+      "Resource": [
+        "arn:aws:events:us-east-1:479752407378:event-bus/emip-*",
+        "arn:aws:events:us-east-1:479752407378:rule/emip-*"
+      ]
+    },
+    {
+      "Sid": "EventBridgeListOnly",
+      "Effect": "Allow",
+      "Action": "events:ListEventBuses",
       "Resource": "*"
     }
   ]

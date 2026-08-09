@@ -13,9 +13,9 @@ EMIP is a platform that analyzes legacy Java (Spring Boot) applications and prod
 | Goal | Description |
 |------|-------------|
 | **Analyze** | Deep static analysis of Java codebases (regex-based, with plugin-based enterprise analysis) |
-| **Recommend** | AI-generated service boundaries, Architecture Decision Records, and migration waves |
+| **Recommend** | AI-generated service boundaries and ADRs, plus deterministic migration waves and cost estimates |
 | **Estimate** | Cost comparison and ROI analysis (current vs post-migration) |
-| **Automate** | Generate deployable microservice scaffolding (stubbed, planned for Sprint 8+) |
+| **Automate** | Generate deployable Spring Boot microservice scaffolding (agentic codegen, Phase 3) |
 | **Govern** | Architecture Decision Records with full explainability and confidence breakdown |
 
 ### What the Platform Produces
@@ -91,10 +91,10 @@ graph TB
 1. Upload    → POST /api/upload ZIP → S3 jobs/{id}/raw/ → DynamoDB job record
 2. Trigger   → POST /api/analyze/{id} → SQS enqueue → returns 202 Accepted
 3. Worker    → SQS triggers Worker Lambda → PipelineEngine → 12 stages
-4. AI        → Stages 4-9 invoke Amazon Bedrock (Nova Pro/Lite/Micro)
+4. AI        → `ai_boundaries` + `ai_adrs` invoke Amazon Bedrock (Nova Pro/Lite/Micro); `ai_readiness`, `ai_migration`, `ai_cost`, `ai_explainability` are deterministic-by-design (`sprint3-deterministic`)
 5. Storage   → Each stage → ArtifactRepository → S3 + DynamoDB metadata
 6. Polling   → Frontend polls GET /api/results/{id} → real-time progress
-7. Complete  → EventBridge → SNS → Frontend renders full results
+7. Complete  → EventBridge → SNS terminal notification (email when configured); frontend picks up finished results by polling
 ```
 
 ### Completed Features
@@ -112,7 +112,7 @@ graph TB
 | Artifact system with versioning and compression | ✅ Complete |
 | S3 SSE encryption, X-Ray tracing | ✅ Complete |
 | 249+ passing tests | ✅ Complete |
-| SAM + CDK dual deployment | ✅ Complete |
+| SAM deployment (canonical; CDK stack experimental/legacy) | ✅ Complete |
 | Frontend with 9 pages | ✅ Feature-complete |
 | REST API with 13 endpoints | ✅ Complete |
 
@@ -139,7 +139,7 @@ graph TB
 | **State** | Zustand + TanStack React Query | — |
 | **Charts** | Recharts + ReactFlow | — |
 | **UI** | Framer Motion, sonner, lucide-react, cmdk | — |
-| **Infrastructure** | AWS SAM + AWS CDK (dual) | — |
+| **Infrastructure** | AWS SAM (canonical); CDK stack experimental/legacy | — |
 | **Database** | DynamoDB (jobs, analysis, checkpoints) | — |
 | **Storage** | S3 (uploads, artifacts, reports) | — |
 | **Messaging** | SQS, SNS, EventBridge | — |
@@ -183,8 +183,8 @@ ProjectOne/
 │   │   └── utils/               # Formatters, constants
 │   └── ...
 ├── infrastructure/
-│   ├── template.yaml            # SAM template (primary)
-│   ├── cdk_stacks/              # CDK stack (alternative)
+│   ├── template.yaml            # SAM template (canonical)
+│   ├── cdk_stacks/              # CDK stack (experimental/legacy — do not deploy)
 │   ├── parameters/              # Environment parameter files
 │   └── policies/                # IAM policy documents
 ├── layers/

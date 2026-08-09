@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 from app.artifacts.models import Artifact, ArtifactMetadata
 from app.pipeline.context import PipelineContext
 from app.pipeline.stage import PipelineStage
+from app.pipeline.state import PipelineStatus
 from app.scheduling.executor import ParallelExecutor, SequentialExecutor
 from app.scheduling.pool import StageTiming, WorkerPool
 
@@ -120,7 +121,7 @@ class TestSequentialExecutor:
         ]
         executor = SequentialExecutor(stages)
         state = executor.execute("job-007", resume_from="B")
-        assert state.has_completed("A")
+        assert state.stages["A"].status == PipelineStatus.CACHED
 
 
 # ─── Parallel Executor ───

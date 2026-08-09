@@ -92,18 +92,6 @@ async def get_manifest(job_id: str):
     return manifest
 
 
-@router.get("/results/{job_id}/artifacts/{filename}")
-async def download_artifact_file(job_id: str, filename: str):
-    validate_job_id(job_id)
-    s3_repo = S3Repository()
-
-    try:
-        obj = s3_repo.get_object(key=f"jobs/{job_id}/artifacts/{filename}")
-        return obj["Body"].read().decode()
-    except Exception:
-        raise ResourceNotFoundException("Artifact", filename)
-
-
 @router.get("/jobs")
 async def list_jobs():
     job_repo = JobRepository()

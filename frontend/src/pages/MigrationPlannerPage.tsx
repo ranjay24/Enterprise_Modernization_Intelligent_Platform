@@ -1,17 +1,27 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Layers, ArrowRight, Clock, Users, AlertTriangle, X, ExternalLink, DollarSign, CheckCircle2 } from 'lucide-react';
-import { listJobs, getAnalysisResults } from '@/services/jobService';
+import { Layers, ArrowRight, Clock, Users, AlertTriangle, X, DollarSign, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { RiskBadge } from '@/components/cards';
 import { EmptyState } from '@/components/common/EmptyState';
 import { TableSkeleton } from '@/components/common/LoadingSkeleton';
+import { CompletedJobSelector } from '@/components/common/CompletedJobSelector';
+import { useCompletedJobs } from '@/hooks/useCompletedJobs';
 import { GlassCard, GlassCardContent, GlassCardHeader, GlassCardTitle } from '@/components/ui/GlassCard';
 import { cn } from '@/utils/cn';
+import type { MigrationWave } from '@/types/api';
+
+interface PlannerWave extends MigrationWave {
+  id?: string;
+  durationWeeks?: { start: number; end: number };
+  status?: string;
+  progress?: number;
+  estimatedEngineers?: number;
+  estimatedCost?: number;
+}
 
 const riskColors: Record<string, string> = {
   low: 'bg-[var(--success)]',
@@ -35,24 +45,9 @@ const statusColors: Record<string, string> = {
 };
 
 export default function MigrationPlannerPage() {
-  const { data: jobsData, isLoading: jobsLoading } = useQuery({
-    queryKey: ['jobs'], queryFn: listJobs, staleTime: 30000,
-  });
+  const { completedJobs, selectedJobId, setSelectedJobId, selectedJob, results, isLoading } = useCompletedJobs();
 
-  const completedJobs = (jobsData?.jobs || []).filter((j: any) =>
-    ['analysis_complete', 'generation_complete', 'generation_with_warnings'].includes(j.status)
-  );
-  const latestJob = completedJobs[0];
-
-  const { data: results, isLoading: resultsLoading } = useQuery({
-    queryKey: ['analysis', latestJob?.job_id],
-    queryFn: () => getAnalysisResults(latestJob!.job_id),
-    enabled: !!latestJob, staleTime: 60000,
-  });
-
-  const isLoading = jobsLoading || resultsLoading;
-
-  const [selectedWave, setSelectedWave] = useState<any>(null);
+  const [selectedWave, setSelectedWave] = useState<PlannerWave | null>(null);
 
   if (isLoading) return <div className="p-6 lg:p-8 max-w-[1440px] mx-auto"><TableSkeleton rows={5} /></div>;
 
@@ -71,15 +66,23 @@ export default function MigrationPlannerPage() {
     );
   }
 
-  const waves = (results.migration_waves || []) as any[];
+  const waves = (results.migration_waves || []) as PlannerWave[];
   const cost = results.cost_comparison;
-  const maxWeek = Math.max(...waves.map((w: any) => w.durationWeeks?.end || w.timeline_weeks || 12), 12);
+  const maxWeek = Math.max(...waves.map((w: PlannerWave) => w.durationWeeks?.end || w.timeline_weeks || 12), 12);
+  const scaleMax = Math.max(maxWeek, 1);
 
   return (
     <div className="p-6 lg:p-8 max-w-[1440px] mx-auto space-y-8">
-      <div>
-        <h1 className="text-[var(--font-size-3xl)] font-bold tracking-tight text-[var(--text-primary)] mb-1">Migration Planner</h1>
-        <p className="text-sm text-[var(--text-secondary)]">Phased migration plan with waves, timelines, and risk assessment</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-[var(--font-size-3xl)] font-bold tracking-tight text-[var(--text-primary)] mb-1">Migration Planner</h1>
+          <p className="text-sm text-[var(--text-secondary)]">Phased migration plan with waves, timelines, and risk assessment</p>
+        </div>
+        <CompletedJobSelector
+          jobs={completedJobs}
+          selectedJobId={selectedJobId}
+          onChange={setSelectedJobId}
+        />
       </div>
 
       {/* Stats bar */}
@@ -110,26 +113,24 @@ export default function MigrationPlannerPage() {
           <GlassCardTitle>Migration Waves — {maxWeek} Week Timeline</GlassCardTitle>
         </GlassCardHeader>
         <GlassCardContent>
-          <div className="space-y-4">
+          <div className="overflow-x-auto">
+          <div className="space-y-4 min-w-[720px]">
             {/* Timeline header */}
             <div className="flex items-center gap-3 pl-24">
-              {Array.from({ length: Math.min(maxWeek, 14) }, (_, i) => (
+              {Array.from({ length: scaleMax }, (_, i) => (
                 <div key={i} className="flex-1 text-[9px] text-[var(--text-muted)] text-center font-mono">
                   W{i + 1}
                 </div>
               ))}
-              {maxWeek > 14 && (
-                <div className="text-[9px] text-[var(--text-muted)]">...</div>
-              )}
             </div>
 
             {/* Wave bars */}
-            {waves.map((wave: any, i: number) => {
+            {waves.map((wave: PlannerWave, i: number) => {
               const startWeek = wave.durationWeeks?.start || 1;
               const endWeek = wave.durationWeeks?.end || (wave.timeline_weeks || 4) + (i * 2);
-              const waveWidth = ((endWeek - startWeek + 1) / Math.min(maxWeek, 14)) * 100;
-              const leftOffset = ((startWeek - 1) / Math.min(maxWeek, 14)) * 100;
-              const Icon = statusIcons[wave.status] || Clock;
+              const waveWidth = ((endWeek - startWeek + 1) / scaleMax) * 100;
+              const leftOffset = ((startWeek - 1) / scaleMax) * 100;
+              const Icon = statusIcons[wave.status ?? 'planned'] || Clock;
 
               return (
                 <motion.div
@@ -152,15 +153,15 @@ export default function MigrationPlannerPage() {
                         className={cn('absolute top-0 h-full rounded-md transition-all duration-500', riskColors[wave.risk_level] || 'bg-[var(--border-strong)]')}
                         style={{ left: `${leftOffset}%`, width: `${waveWidth}%`, opacity: wave.status === 'planned' ? 0.5 : 0.85 }}
                       />
-                      {wave.progress > 0 && (
+                      {(wave.progress ?? 0) > 0 && (
                         <div
                           className={cn('absolute top-0 h-full rounded-md transition-all duration-700 ease-[var(--ease-out)]', riskColors[wave.risk_level] || 'bg-[var(--border-strong)]')}
-                          style={{ left: `${leftOffset}%`, width: `${(wave.progress / 100) * waveWidth}%`, opacity: 1 }}
+                          style={{ left: `${leftOffset}%`, width: `${((wave.progress ?? 0) / 100) * waveWidth}%`, opacity: 1 }}
                         />
                       )}
                     </div>
                     <div className="flex items-center gap-2 w-28 shrink-0 justify-end">
-                      <Icon className={cn('w-3.5 h-3.5', statusColors[wave.status] || 'text-[var(--text-muted)]')} />
+                      <Icon className={cn('w-3.5 h-3.5', statusColors[wave.status ?? 'planned'] || 'text-[var(--text-muted)]')} />
                       <span className="text-[10px] text-[var(--text-muted)]">{endWeek - startWeek + 1}w</span>
                       <span className="text-[10px] text-[var(--text-muted)]">~{wave.estimated_engineers || wave.estimatedEngineers || '-'} eng</span>
                     </div>
@@ -175,6 +176,7 @@ export default function MigrationPlannerPage() {
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-[var(--success)]" /> Low Risk</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-[var(--warning)]" /> Medium Risk</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-[var(--risk)]" /> High Risk</span>
+          </div>
           </div>
         </GlassCardContent>
       </GlassCard>
@@ -204,7 +206,7 @@ export default function MigrationPlannerPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] p-3 text-center">
                   <Clock className="w-4 h-4 text-[var(--accent-blue)] mx-auto mb-1" />
-                  <p className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{selectedWave.timeline_weeks || (selectedWave.durationWeeks?.end - selectedWave.durationWeeks?.start + 1) || '-'}w</p>
+                  <p className="text-lg font-bold text-[var(--text-primary)] tabular-nums">{selectedWave.timeline_weeks || ((selectedWave.durationWeeks?.end ?? 0) - (selectedWave.durationWeeks?.start ?? 0) + 1) || '-'}w</p>
                   <p className="text-[10px] text-[var(--text-muted)]">Duration</p>
                 </div>
                 <div className="rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] p-3 text-center">
@@ -246,15 +248,15 @@ export default function MigrationPlannerPage() {
                 <Badge variant={selectedWave.status === 'completed' ? 'success' : selectedWave.status === 'in_progress' ? 'info' : 'secondary'} size="sm">
                   {(selectedWave.status || 'planned').replace('_', ' ')}
                 </Badge>
-                {selectedWave.progress > 0 && (
+                {(selectedWave.progress ?? 0) > 0 && (
                   <span className="text-xs text-[var(--text-muted)]">{selectedWave.progress}% complete</span>
                 )}
               </div>
             </div>
 
-            {latestJob && (
+            {selectedJob && (
               <div className="mt-6">
-                <Link to={`/jobs/${latestJob.job_id}/results`}>
+                <Link to={`/jobs/${selectedJob.job_id}/results`}>
                   <Button variant="outline" className="gap-2 w-full">
                     View Full Results <ArrowRight className="w-4 h-4" />
                   </Button>
@@ -265,8 +267,8 @@ export default function MigrationPlannerPage() {
         </div>
       )}
 
-      {waves.length > 0 && latestJob && (
-        <Link to={`/jobs/${latestJob.job_id}/results`} className="inline-block">
+      {waves.length > 0 && selectedJob && (
+        <Link to={`/jobs/${selectedJob.job_id}/results`} className="inline-block">
           <Button variant="outline" className="gap-2">
             View Detailed Results <ArrowRight className="w-4 h-4" />
           </Button>

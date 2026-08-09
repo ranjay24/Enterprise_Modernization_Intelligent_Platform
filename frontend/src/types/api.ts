@@ -36,6 +36,7 @@ export interface ServiceBoundary {
   readiness: 'green' | 'yellow' | 'red';
   risk_level: 'low' | 'medium' | 'high' | 'critical';
   business_capability?: string;
+  dependencies?: string[];
 }
 
 export interface ReadinessScores {

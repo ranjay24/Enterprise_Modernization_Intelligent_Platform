@@ -8,6 +8,7 @@ plan when Bedrock is unavailable or returns invalid output.
 from __future__ import annotations
 
 import structlog
+import re
 from pathlib import Path
 from typing import Any
 
@@ -42,12 +43,27 @@ def _pascal(value: str) -> str:
     return "".join(p.capitalize() for p in _sanitize_identifier(value).split("_"))
 
 
+def _method_name(value: str) -> str:
+    """camelCase for Java method names, splitting words and preserving interior capitals."""
+    parts = [p for p in _sanitize_identifier(value).split("_") if p]
+    words: list[str] = []
+    for part in parts:
+        words.extend(w for w in re.split(r"(?<=[a-z0-9])(?=[A-Z])", part) if w)
+    first = words[0][0].upper() + words[0][1:] if words else "Handle"
+    return first + "".join(w[0].upper() + w[1:] for w in words[1:])
+
+
 def _env() -> Environment:
-    return Environment(
+    env = Environment(
         loader=FileSystemLoader(str(_TEMPLATES_DIR)),
         undefined=StrictUndefined,
         keep_trailing_newline=True,
     )
+    env.filters["sanitize"] = _sanitize_identifier
+    env.filters["camel"] = _camel
+    env.filters["pascal"] = _pascal
+    env.filters["method"] = _method_name
+    return env
 
 
 def build_scaffold_service(service_plan: dict, global_config: dict | None = None) -> dict:
@@ -76,14 +92,13 @@ def build_scaffold_service(service_plan: dict, global_config: dict | None = None
     dto_class = f"{_pascal(service_id)}Dto"
     service_var = _camel(service_id) + "Service"
     resource_path = _camel(service_id) + "s"
-    event_listener_class = f"{_pascal(service_id)}EventListener"
 
     feign_clients = [f for f in codegen_models._as_list(service_plan.get("feign_clients")) if isinstance(f, dict)]
     events = service_plan.get("events", {}) or {}
     publish_topics = [e.get("topic") for e in codegen_models._as_list(events.get("publishes")) if e.get("topic")]
     subscribe_queues = [e.get("queue") for e in codegen_models._as_list(events.get("subscribes")) if e.get("queue")]
 
-    server_port = service_plan.get("server_port", 8080)
+    server_port = service_plan.get("server_port", 8081)
     if isinstance(server_port, str) and server_port.isdigit():
         server_port = int(server_port)
 
@@ -97,7 +112,6 @@ def build_scaffold_service(service_plan: dict, global_config: dict | None = None
         "entity_class": entity_class,
         "dto_class": dto_class,
         "service_var": service_var,
-        "event_listener_class": event_listener_class,
         "resource_path": resource_path,
         "table_name": tables[0] if tables else "resource",
         "base_path": f"/{resource_path}",
@@ -144,22 +158,32 @@ def build_scaffold_service(service_plan: dict, global_config: dict | None = None
     add("dto.java.j2", f"{pkg_dir}/web/dto/{dto_class}.java")
 
     for client in feign_clients:
-        client_name = str(client.get("name") or "RemoteClient")
+        client_name = _pascal(str(client.get("name") or "RemoteClient"))
+        target_service = str(client.get("target_service") or service_id)
+        target_port = client.get("target_port") or 8081
         add(
             "feign_client.java.j2",
             f"{pkg_dir}/client/{client_name}.java",
             client_name=client_name,
             client_class=client_name,
-            target_service=str(client.get("target_service") or service_id),
-            feign_url="${{{}.url:http://{}:8080}}".format(
-                client_name, client.get("target_service") or service_id
-            ),
+            target_service=target_service,
+            feign_url="${{{}.url:http://{}:{}}}".format(client_name, target_service, target_port),
         )
 
     if context["uses_kafka"]:
-        add("kafka_listener.java.j2", f"{pkg_dir}/messaging/{event_listener_class}.java")
+        kafka_class = f"{_pascal(service_id)}KafkaEventListener"
+        add(
+            "kafka_listener.java.j2",
+            f"{pkg_dir}/messaging/{kafka_class}.java",
+            event_listener_class=kafka_class,
+        )
     if context["uses_rabbitmq"]:
-        add("rabbit_listener.java.j2", f"{pkg_dir}/messaging/{event_listener_class}.java")
+        rabbit_class = f"{_pascal(service_id)}RabbitEventListener"
+        add(
+            "rabbit_listener.java.j2",
+            f"{pkg_dir}/messaging/{rabbit_class}.java",
+            event_listener_class=rabbit_class,
+        )
 
     add("smoke_test.java.j2", f"src/test/java/{base_package.replace('.', '/')}/SmokeTest.java")
 

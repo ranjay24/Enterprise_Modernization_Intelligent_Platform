@@ -8,13 +8,10 @@ through the AIEngine and always carry a deterministic fallback.
 
 from app.agents.base import Agent, AgentDefinition
 from app.agents.registry import AgentRegistry, get_agent_registry
-from app.agents.runtime import AgentRuntime, AgentIteration
 
 __all__ = [
     "Agent",
     "AgentDefinition",
     "AgentRegistry",
     "get_agent_registry",
-    "AgentRuntime",
-    "AgentIteration",
 ]

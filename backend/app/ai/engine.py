@@ -144,6 +144,7 @@ class AIEngine:
             max_tokens=max_tokens,
             model_id=model_id,
             expect_json=True,
+            metadata={"job_id": job_id},
         )
 
         start = time.monotonic()
@@ -185,6 +186,7 @@ class AIEngine:
 
         if not response_validation.is_valid:
             logger.warning("response_validation_failed", errors=response_validation.errors)
+            metadata["error"] = "; ".join(response_validation.errors) or "response_validation_failed"
             return response_validation.parsed_data, metadata
 
         return response_validation.parsed_data, metadata

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/common/EmptyState';
 import { TableSkeleton } from '@/components/common/LoadingSkeleton';
+import type { JobResponse } from '@/types/api';
 
 const studioReadyStatuses = ['analysis_complete', 'generation_complete', 'generation_with_warnings', 'generating'];
 
@@ -23,8 +24,8 @@ export default function StudioIndexPage() {
     );
   }
 
-  const readyJobs = (data?.jobs || []).filter((j: any) => studioReadyStatuses.includes(j.status));
-  const otherJobs = (data?.jobs || []).filter((j: any) => !studioReadyStatuses.includes(j.status));
+  const readyJobs = (data?.jobs || []).filter((j: JobResponse) => studioReadyStatuses.includes(j.status));
+  const otherJobs = (data?.jobs || []).filter((j: JobResponse) => !studioReadyStatuses.includes(j.status));
 
   return (
     <div className="p-6 lg:p-8 max-w-[1200px] mx-auto space-y-6">
@@ -51,7 +52,7 @@ export default function StudioIndexPage() {
         <>
           <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Ready for generation</h2>
           <div className="space-y-2">
-            {readyJobs.map((job: any) => {
+            {readyJobs.map((job: JobResponse) => {
               const generating = job.status === 'generating';
               const done = ['generation_complete', 'generation_with_warnings'].includes(job.status);
               return (
@@ -84,7 +85,7 @@ export default function StudioIndexPage() {
         <>
           <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest pt-2">Other jobs</h2>
           <div className="space-y-2">
-            {otherJobs.map((job: any) => (
+            {otherJobs.map((job: JobResponse) => (
               <div key={job.job_id} className="flex items-center gap-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)]/50 p-4 opacity-70">
                 <div className="w-9 h-9 rounded-lg bg-[var(--border-subtle)] flex items-center justify-center">
                   <Clock className="w-4.5 h-4.5 text-[var(--text-muted)]" />

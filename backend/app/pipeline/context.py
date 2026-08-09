@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import threading
 from dataclasses import dataclass, field
 from typing import Any
@@ -36,10 +37,16 @@ class PipelineContext:
             return self.results.get(stage_name)
 
     def get_result_data(self, stage_name: str) -> dict:
-        """Get just the content dict from a stage's artifact. Thread-safe."""
+        """Get a deep copy of a stage's content dict. Thread-safe.
+
+        A copy is returned so concurrent stages cannot mutate shared analysis
+        data (parallel execution runs independent stages in separate threads).
+        """
         with self._lock:
             artifact = self.results.get(stage_name)
-            return artifact.content if artifact else {}
+            if not artifact:
+                return {}
+            return copy.deepcopy(artifact.content)
 
     def get_data(self) -> dict:
         """Get the initial analysis data."""

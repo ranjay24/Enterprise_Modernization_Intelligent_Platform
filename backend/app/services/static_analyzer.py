@@ -284,6 +284,23 @@ def _deduplicate_name(name: str, used: set) -> str:
     return f"{name}_{n}"
 
 
+def _extract_class_body(content: str, start_pos: int) -> str:
+    """Return the brace-balanced body of a class declaration at start_pos."""
+    brace_pos = content.find("{", start_pos)
+    if brace_pos == -1:
+        return ""
+    depth = 0
+    for i in range(brace_pos, len(content)):
+        ch = content[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return content[brace_pos:i + 1]
+    return content[brace_pos:]
+
+
 def _parse_java_class(
     content: str,
     file_path: str,
@@ -381,9 +398,14 @@ def _parse_java_class(
     # Constructor injection: Spring resolves the constructor parameters as
     # dependencies. In single-file monoliths there are no imports for sibling
     # classes, so constructor params are the only signal of coupling.
+    # The search is scoped to this class's brace-balanced body and requires a
+    # body brace after the signature so `new Foo(...)` instantiations inside
+    # the class are not misread as constructor declarations.
+    class_body = _extract_class_body(content, class_match.start())
     ctor_match = re.search(
-        r"(?:public|protected|private)?\s*(?:final\s+)?(?:\w+\s+)*?" + re.escape(name) + r"\s*\(([^)]*)\)",
-        content,
+        r"(?:public|protected|private)?\s*(?:final\s+)?(?:\w+\s+)*?" + re.escape(name)
+        + r"\s*\(([^)]*)\)\s*(?:throws\s+[\w.,\s]+)?\s*\{",
+        class_body,
     )
     if ctor_match:
         for param in ctor_match.group(1).split(","):

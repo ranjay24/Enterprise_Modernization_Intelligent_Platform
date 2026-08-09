@@ -154,22 +154,33 @@ class AIResponseValidator:
     def _check_confidence(self, data: dict, result: ValidationResult):
         """Check confidence values exist and are reasonable."""
         min_conf = self._get_profile().min_confidence
-        confidence = data.get("confidence")
+        confidence = self._to_float(data.get("confidence"))
         if confidence is not None:
-            result.confidence_score = float(confidence)
-            if result.confidence_score < min_conf:
+            result.confidence_score = confidence
+            if confidence < min_conf:
                 result.warnings.append(
-                    f"Low confidence: {result.confidence_score} (minimum: {min_conf})"
+                    f"Low confidence: {confidence} (minimum: {min_conf})"
                 )
 
         for key in ("recommendations", "adrs", "waves", "findings"):
             if key in data and isinstance(data[key], list):
                 for item in data[key]:
                     if isinstance(item, dict) and "confidence" in item:
-                        if float(item["confidence"]) < min_conf:
+                        item_conf = self._to_float(item["confidence"])
+                        if item_conf is not None and item_conf < min_conf:
                             result.warnings.append(
                                 f"Low confidence in {key}: {item.get('title', item.get('name', 'unknown'))}"
                             )
+
+    @staticmethod
+    def _to_float(value) -> float | None:
+        """Coerce a confidence value to float, tolerating non-numeric input."""
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
     def _check_hallucination(self, data: dict, known_entities: list[str], result: ValidationResult):
         """Check that referenced entities exist in the known set."""

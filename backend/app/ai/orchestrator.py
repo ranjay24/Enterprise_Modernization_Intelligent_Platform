@@ -1157,8 +1157,18 @@ def generate_migration_waves(
     }
 
 
-def generate_cost_comparison(analysis_data: dict, boundaries: list[dict]) -> dict:
-    """Generate cost comparison — deterministic estimate based on actual metrics."""
+def generate_cost_comparison(
+    analysis_data: dict,
+    boundaries: list[dict],
+    pricing=None,
+) -> dict:
+    """Generate cost comparison — deterministic estimate based on actual metrics.
+
+    Infrastructure cost uses real AWS on-demand rates from the Pricing API when
+    a ``pricing`` provider is supplied and the lookup succeeds; otherwise it
+    falls back to the fixed per-unit formula. Operations and maintenance stay
+    engineering-labor estimates (the Pricing API cannot price those).
+    """
     metrics = analysis_data.get("metrics", {})
     total_loc = metrics.get("total_lines", 0)
     total_classes = metrics.get("total_classes", 0)
@@ -1166,8 +1176,20 @@ def generate_cost_comparison(analysis_data: dict, boundaries: list[dict]) -> dic
     god_classes = len(metrics.get("god_classes", []))
     circular_deps = len(metrics.get("circular_dependencies", []))
 
-    # Base cost on actual codebase size: $1.50 per 1000 LOC/month for infrastructure
-    base_infra = max(200, total_loc / 1000 * 1.5) if total_loc > 0 else 500
+    # Infrastructure: prefer real on-demand rates when credentials and a known
+    # region allow a lookup, else $1.50 per 1000 LOC/month.
+    pricing_source = "estimate-formulas"
+    pricing_details: dict = {}
+    real_infra: float | None = None
+    if pricing is not None:
+        real_infra, pricing_details = pricing.estimate_monthly_infra(analysis_data, boundaries)
+        if real_infra is not None:
+            pricing_source = "aws-pricing-api"
+    base_infra = (
+        real_infra
+        if real_infra is not None
+        else (max(200, total_loc / 1000 * 1.5) if total_loc > 0 else 500)
+    )
     # Operations cost: $0.80 per class/month
     ops_cost = max(100, total_classes * 0.8) if total_classes > 0 else 200
     # Maintenance engineering dominates legacy spend and grows with the number
@@ -1231,6 +1253,8 @@ def generate_cost_comparison(analysis_data: dict, boundaries: list[dict]) -> dic
             "estimated_timeline_weeks": total_weeks,
             "total_engineers_needed": peak_engineers,
             "risk_summary": f"{god_classes} god classes, {circular_deps} circular dependencies detected",
+            "pricing_source": pricing_source,
+            **pricing_details,
         },
     }
 

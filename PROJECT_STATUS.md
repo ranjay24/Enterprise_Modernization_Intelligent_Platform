@@ -33,7 +33,7 @@ Eliminate the guesswork in monolith-to-microservices migration by combining stat
 ### Goals
 
 - **Analyze** — Deep static analysis of Java codebases
-- **Recommend** — AI-generated service boundaries, ADRs, and migration waves
+- **Recommend** — AI-generated service boundaries and ADRs, plus deterministic migration waves and cost estimates
 - **Estimate** — Cost comparison and ROI analysis
 - **Automate** — Generate deployable microservice scaffolding
 - **Govern** — Architecture Decision Records with explainability
@@ -162,7 +162,7 @@ Eliminate the guesswork in monolith-to-microservices migration by combining stat
 |-------------|--------|
 | Provider abstraction | ✅ |
 | Amazon Nova integration (Pro, Lite, Micro) | ✅ |
-| Claude compatibility layer | ✅ |
+| Claude/Mistral/Llama capability metadata | ✅ (profile scaling only — no runtime adapter) |
 | Prompt registry | ✅ |
 | AI contracts | ✅ |
 | Prompt builder with token budgeting | ✅ |
@@ -178,7 +178,7 @@ Eliminate the guesswork in monolith-to-microservices migration by combining stat
 | Explainability generation | ✅ |
 | Business capability detection | ✅ |
 | AI orchestration | ✅ |
-| Fallback chain (4 levels) | ✅ |
+| Fallback chain (2-step: AI → deterministic) | ✅ |
 | Deterministic fallback mode | ✅ |
 | Sprint 3 AI layer orchestrator | ✅ |
 
@@ -362,13 +362,13 @@ Eliminate the guesswork in monolith-to-microservices migration by combining stat
 3. **Worker:** SQS triggers Worker Lambda → Builds pipeline → Executes 12 stages sequentially or via DAG
 4. **Storage:** Each stage produces an Artifact → Stored via ArtifactRepository → S3 + DynamoDB metadata
 5. **Polling:** Frontend polls `GET /api/results/{id}` → Displays real-time progress
-6. **Completion:** Pipeline completes → EventBridge event → SNS notification → Frontend renders full results
+6. **Completion:** Pipeline completes → EventBridge event → SNS notification (email when `NotificationEmail` is set); the frontend picks up the finished results by polling
 
 ---
 
 ## 6. Pipeline Stages
 
-All 12 stages are implemented, tested, and passing in production.
+All 12 stages are implemented and covered by the backend test suite (381 passing).
 
 | # | Stage | Name | Generator | Requires AI | Depends On | Status |
 |---|-------|------|-----------|-------------|------------|--------|
@@ -376,11 +376,11 @@ All 12 stages are implemented, tested, and passing in production.
 | 2 | Static Analysis | `static_analysis` | sprint2-analysis-engine | No | extraction | ✅ Complete |
 | 3 | Enterprise Analysis | `enterprise_analysis` | sprint2-analysis-engine | No | static_analysis | ✅ Complete |
 | 4 | AI Boundaries | `ai_boundaries` | sprint3-ai-layer | Yes | static_analysis, enterprise_analysis | ✅ Complete |
-| 5 | AI Readiness | `ai_readiness` | sprint3-ai-layer | Yes | ai_boundaries | ✅ Complete |
-| 6 | AI ADRs | `ai_adrs` | sprint3-ai-layer | Yes | ai_readiness | ✅ Complete |
-| 7 | AI Migration | `ai_migration` | sprint3-ai-layer | Yes | ai_adrs | ✅ Complete |
-| 8 | AI Cost | `ai_cost` | sprint3-ai-layer | Yes | ai_migration | ✅ Complete |
-| 9 | AI Explainability | `ai_explainability` | sprint3-ai-layer | Yes | ai_cost | ✅ Complete |
+| 5 | AI Readiness | `ai_readiness` | sprint3-ai-layer | No — deterministic | static_analysis, enterprise_analysis | ✅ Complete |
+| 6 | AI ADRs | `ai_adrs` | sprint3-ai-layer | Yes — Bedrock | static_analysis, enterprise_analysis, ai_boundaries | ✅ Complete |
+| 7 | AI Migration | `ai_migration` | sprint3-ai-layer | No — deterministic | ai_boundaries, ai_readiness | ✅ Complete |
+| 8 | AI Cost | `ai_cost` | sprint3-ai-layer | No — deterministic (Pricing API rates when enabled, formulas otherwise) | static_analysis, enterprise_analysis, ai_boundaries | ✅ Complete |
+| 9 | AI Explainability | `ai_explainability` | sprint3-ai-layer | No — deterministic | static_analysis, enterprise_analysis, ai_boundaries, ai_readiness | ✅ Complete |
 | 10 | Results Assembly | `results_assembly` | sprint4-pipeline | No | ai_explainability | ✅ Complete |
 | 11 | Report Generation | `report_generation` | sprint4-pipeline | No | results_assembly | ✅ Complete |
 | 12 | Manifest | `manifest` | sprint4-pipeline | No | results_assembly | ✅ Complete |
@@ -425,12 +425,13 @@ Generates a deployment manifest with artifact inventory, pipeline metadata, toke
 
 ### Failure Handling
 
-All AI stages have a 4-level fallback chain:
+All AI stages use a deterministic fallback path implemented in `BaseAIStage`:
 
 1. **AI succeeds** → result used directly
-2. **AI fails** → deterministic fallback produces degraded result
-3. **Empty result** → pipeline continues with empty data
-4. **Pipeline continues** → degraded flag set, final manifest reports degraded stages
+2. **AI fails** (exception or empty result) → deterministic fallback result, flagged `is_degraded=true`
+3. **Pipeline continues** → the manifest reports degraded stages and deterministic fallback count
+
+This is a 2-step chain (AI → single deterministic fallback), not a multi-level retry chain. Only `ai_boundaries` and `ai_adrs` actually invoke Bedrock; the other `ai_*` stages are deterministic-by-design and report model id `sprint3-deterministic`.
 
 ---
 
@@ -695,8 +696,8 @@ Documentation             ██████████████░░  80% 
 Benchmark Analysis        ██████████████░░  80%  ⚠️  More profiles planned
 
 CI/CD Pipeline            ████░░░░░░░░░░░░  20%  ❌  Not started
-Frontend Tests            ██░░░░░░░░░░░░░░  10%  ❌  Not started
-Code Generation           █░░░░░░░░░░░░░░░   5%  ❌  Stubbed only
+Frontend Tests            ████░░░░░░░░░░░░  20%  ✅  E2E smoke tests (13) — unit tests missing
+Code Generation           ████████████████ 100%  ✅  Agentic codegen (Phase 3) — Lambda worker not deployed
 CloudWatch Dashboards     █░░░░░░░░░░░░░░░   5%  ❌  Not started
 Knowledge Base            ░░░░░░░░░░░░░░░░   0%  ❌  Empty
 Reports Directory         ░░░░░░░░░░░░░░░░   0%  ❌  Empty
@@ -708,4 +709,4 @@ Reports Directory         ░░░░░░░░░░░░░░░░   0% 
 ████████████████████████████░░░░   85%
 ```
 
-The platform is production-ready for analysis workloads. Remaining work focuses on UI polish, documentation, CI/CD automation, and advanced static analysis capabilities.
+The platform is a validated demo / enterprise-grade prototype for analysis workloads. Remaining work focuses on CI/CD automation, frontend unit tests, UI polish, and advanced static analysis capabilities.

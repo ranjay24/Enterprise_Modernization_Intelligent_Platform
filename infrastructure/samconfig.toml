@@ -16,3 +16,17 @@ region = "us-east-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM"
 parameter_overrides = "Environment=dev"
+
+[staging.build.parameters]
+parallel = true
+base_dir = "../backend"
+template_file = "../infrastructure/template.yaml"
+
+[staging.deploy.parameters]
+stack_name = "emip-staging"
+resolve_s3 = true
+s3_prefix = "emip/deploy-staging"
+region = "us-east-1"
+confirm_changeset = false
+capabilities = "CAPABILITY_IAM CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM"
+parameter_overrides = "Environment=staging LogLevel=INFO DynamoDBJobsTable=emip-jobs-staging DynamoDBAnalysisTable=emip-analysis-staging"

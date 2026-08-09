@@ -6,8 +6,11 @@
   "scripts": {
     "dev:frontend": "cd frontend && npm run dev",
     "build:frontend": "cd frontend && npm run build",
-    "deploy": "cd infrastructure && npx cdk deploy --all",
-    "deploy:backend": "cd infrastructure && npx cdk deploy EMIP-Backend",
-    "synth": "cd infrastructure && npx cdk synth"
+    "build:backend": "cd infrastructure && sam build --template template.yaml",
+    "validate": "python infrastructure/scripts/check_parameters.py && cd infrastructure && sam validate --template template.yaml",
+    "deploy": "cd infrastructure && sam deploy --template template.yaml"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
   }
 }

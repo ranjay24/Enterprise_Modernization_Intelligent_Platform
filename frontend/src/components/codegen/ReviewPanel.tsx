@@ -33,25 +33,25 @@ export function ReviewPanel({ report }: ReviewPanelProps) {
       <div
         className={cn(
           'rounded-xl border p-4',
-          approved ? 'border-[var(--success-bg)] bg-[var(--success-bg)]/30' : 'border-[var(--danger-bg)] bg-[var(--danger-bg)]/20'
+          approved ? 'border-[var(--success-bg)] bg-[var(--success-bg)]/30' : 'border-[var(--warning)]/30 bg-[var(--warning)]/10'
         )}
       >
         <div className="flex items-center gap-2">
           {approved ? (
             <ThumbsUp className="w-5 h-5 text-[var(--success)]" />
           ) : (
-            <ShieldAlert className="w-5 h-5 text-[var(--risk)]" />
+            <ShieldAlert className="w-5 h-5 text-[var(--warning)]" />
           )}
           <div className="flex-1">
-            <p className={cn('text-sm font-semibold', approved ? 'text-[var(--success)]' : 'text-[var(--risk)]')}>
-              {approved ? 'Review Approved' : 'Review Rejected'}
+            <p className={cn('text-sm font-semibold', approved ? 'text-[var(--success)]' : 'text-[var(--warning)]')}>
+              {approved ? 'Review Approved' : 'Needs Work'}
             </p>
             <p className="text-[11px] text-[var(--text-muted)]">
               Iteration {report.iteration ?? 1} · Score {report.score ?? 0}/100
               {criticalCount > 0 && !approved ? ` · ${criticalCount} critical/major finding${criticalCount > 1 ? 's' : ''}` : ''}
             </p>
           </div>
-          <Badge variant={approved ? 'success' : 'danger'} size="lg">
+          <Badge variant={approved ? 'success' : 'warning'} size="lg">
             {approved ? 'APPROVED' : 'NEEDS WORK'}
           </Badge>
         </div>

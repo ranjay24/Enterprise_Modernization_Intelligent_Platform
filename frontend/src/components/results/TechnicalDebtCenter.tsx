@@ -5,11 +5,12 @@ import { DebtCard } from '@/components/cards/DebtCard';
 import { Badge } from '@/components/ui/Badge';
 import type { AnalysisResult } from '@/types/api';
 import type { DebtItem } from '@/types/dashboard';
+import type { GodClassMetric, CircularDependencyMetric, DeadCodeMetric } from '@/types/metrics';
 
 function buildDebtItems(analysis: AnalysisResult): DebtItem[] {
-  const godClasses = (analysis.metrics?.god_classes || []) as any[];
-  const circularDeps = (analysis.metrics?.circular_dependencies || []) as any[];
-  const deadCode = (analysis.metrics?.dead_code || []) as any[];
+  const godClasses = (analysis.metrics?.god_classes || []) as GodClassMetric[];
+  const circularDeps = (analysis.metrics?.circular_dependencies || []) as CircularDependencyMetric[];
+  const deadCode = (analysis.metrics?.dead_code || []) as DeadCodeMetric[];
   const items: DebtItem[] = [];
 
   if (godClasses.length > 0) {
@@ -41,9 +42,9 @@ function buildDebtItems(analysis: AnalysisResult): DebtItem[] {
 
 export function TechnicalDebtCenter({ analysis }: { analysis: AnalysisResult }) {
   const debtItems = buildDebtItems(analysis);
-  const godClasses = (analysis.metrics?.god_classes || []) as any[];
-  const circularDeps = (analysis.metrics?.circular_dependencies || []) as any[];
-  const deadCode = (analysis.metrics?.dead_code || []) as any[];
+  const godClasses = (analysis.metrics?.god_classes || []) as GodClassMetric[];
+  const circularDeps = (analysis.metrics?.circular_dependencies || []) as CircularDependencyMetric[];
+  const deadCode = (analysis.metrics?.dead_code || []) as DeadCodeMetric[];
   const totalDebt = godClasses.length + circularDeps.length + deadCode.length;
 
   return (
@@ -80,7 +81,7 @@ export function TechnicalDebtCenter({ analysis }: { analysis: AnalysisResult }) 
                 <AlertOctagon className="w-4 h-4 text-red-500" /> God Classes Detail
               </h3>
               <div className="space-y-2">
-                {godClasses.map((gc: any, i: number) => (
+                {godClasses.map((gc: GodClassMetric, i: number) => (
                   <div key={i} className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800/30">
                     <div>
                       <span className="font-medium text-red-800 dark:text-red-300">{gc.name}</span>
@@ -102,7 +103,7 @@ export function TechnicalDebtCenter({ analysis }: { analysis: AnalysisResult }) 
                 <Zap className="w-4 h-4 text-yellow-500" /> Circular Dependencies Detail
               </h3>
               <div className="space-y-2">
-                {circularDeps.map((cd: any, i: number) => (
+                {circularDeps.map((cd: CircularDependencyMetric, i: number) => (
                   <div key={i} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-100 dark:border-yellow-800/30">
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-yellow-800 dark:text-yellow-300">{cd.type} cycle</span>
@@ -121,7 +122,7 @@ export function TechnicalDebtCenter({ analysis }: { analysis: AnalysisResult }) 
                 <XCircle className="w-4 h-4 text-muted-foreground" /> Dead Code Detail
               </h3>
               <div className="space-y-2">
-                {deadCode.map((dc: any, i: number) => (
+                {deadCode.map((dc: DeadCodeMetric, i: number) => (
                   <div key={i} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                     <div>
                       <span className="font-medium text-foreground">{dc.name}</span>

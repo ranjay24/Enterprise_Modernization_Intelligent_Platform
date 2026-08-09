@@ -1,6 +1,6 @@
 # EMIP Known Limitations
 
-This document catalogs the current limitations of the Enterprise Modernization Intelligence Platform. Use this as a reference when planning features, setting expectations with stakeholders, or debugging unexpected behavior.
+This document catalogs the current limitations of the Enterprise Modernization Intelligence Platform. Use this as a reference when planning features, setting expectations with stakeholders, or debugging unexpected behavior. A concise, evaluator-facing summary lives at the repo root: [`KNOWN_LIMITATIONS.md`](../KNOWN_LIMITATIONS.md).
 
 ---
 
@@ -19,6 +19,8 @@ This document catalogs the current limitations of the Enterprise Modernization I
 | Mixtral 8x7B | 32,000 tokens | 4,096 tokens |
 | Llama 3.2 90B | 128,000 tokens | 4,096 tokens |
 
+The Claude/Mistral/Llama rows feed BENCHMARK profile capability detection only; only the three Nova models have a runtime adapter and can be invoked.
+
 - **Prompt compression needed for large codebases** — codebases with >500 classes routinely exceed available context windows. The `AnalysisProfile` truncation limits (`classes_json_max_chars`, etc.) mitigate this by slicing data before prompt assembly.
 - **BENCHMARK mode** detects model capabilities and sets limits accordingly, but very large monoliths (>1000 classes) will still be truncated in any mode.
 - **Token counting** is approximate — actual token consumption can vary by 10-20% depending on content.
@@ -31,14 +33,15 @@ This document catalogs the current limitations of the Enterprise Modernization I
 
 ### Cost Estimation
 
-- **Generic AWS pricing**: Cost estimates use public AWS on-demand pricing. They do not account for:
+- **Hybrid pricing, not a quote**: `ai_cost` prices its assumed infrastructure footprint (EC2 `t3.medium`, RDS `db.t3.small`, gp3 storage) with **real AWS Pricing API on-demand rates** when `EMIP_AWS_PRICING_ENABLED=true` (requires AWS credentials, i.e. the Lambda worker) and the region is a known Pricing-API location. When the lookup is disabled/offline/unknown-region it falls back to fixed formulas (e.g. `$1.50/1000 LOC`, `$0.80/class`, fixed post-migration savings assumptions). `migration_impact.pricing_source` = `aws-pricing-api` or `estimate-formulas`. Figures are order-of-magnitude estimates, not quotes. They do not account for:
   - Enterprise discount programs (EDPs)
   - Reserved instance pricing
   - Savings plans
   - Spot instance availability
   - Data transfer costs across regions
   - Support plan costs
-- Estimates assume `us-east-1` pricing — other regions may have different rates.
+- **The footprint is assumed, not scanned**: the static analyzer reports no real instance inventory, so resource counts are derived from classes/LOC/service boundaries. Operations and maintenance remain fixed engineering-labor formulas.
+- Estimates default to the region in `AWS_REGION`; other regions may have different rates. Unknown regions fall back to formulas.
 
 ### AI Response Consistency
 
@@ -89,6 +92,22 @@ The static analyzer in `backend/app/services/static_analyzer.py` uses **regex-ba
 
 ---
 
+## Upload Security (external 47-item review fixes — 2026-08-09)
+
+- **ZIP traversal + zip-bomb hardening is in place**: uploads are validated
+  against path traversal (`..` members, absolute paths, drive letters) and
+  size caps (`MAX_ZIP_ENTRY_SIZE_BYTES=100MB`, `MAX_ZIP_ENTRY_COUNT=10000`,
+  `MAX_ZIP_TOTAL_UNCOMPRESSED_BYTES=500MB`, `MAX_ZIP_COMPRESSION_RATIO=200`) in
+  `app/utils/zip_utils.py` / `app/validators/zip_validator.py`; extraction is
+  member-by-member with realpath checks and insecure `mktemp` call sites were
+  replaced with `mkstemp`.
+- **Remaining gaps acknowledged but deferred** (out of the security+correctness
+  pass): SQS `enqueue_report` lacks `MessageGroupId` (#31), `TERMINAL_STATUSES`
+  still includes `generating`/`paused` (#34), resume can set raw `uploaded`
+  status strings (#32), `fallback()` is not guarded against empty AI output
+  triggering it (#22), and some places still buffer large files with
+  `file.read()` (#30). See `docs/19_CORRECTNESS_PLAN.md` Phase 9.
+
 ## Frontend Limitations
 
 ### Data Mocking
@@ -98,8 +117,8 @@ The static analyzer in `backend/app/services/static_analyzer.py` uses **regex-ba
 
 ### Test Coverage
 
-- **No frontend test coverage** — there are currently no unit, integration, or E2E tests for the React frontend.
-- Component behavior is only verified through manual testing.
+- **Playwright e2e smoke tests exist** (`tests/e2e/full-flow.spec.ts`, 13 tests — demo-mode dashboard/upload/jobs/results/navigation walkthrough) but there are **no frontend unit or integration tests** for components, hooks, or the API client.
+- Component behavior is otherwise verified only through manual testing.
 
 ### Performance
 
@@ -113,9 +132,8 @@ The static analyzer in `backend/app/services/static_analyzer.py` uses **regex-ba
 
 ### CI/CD
 
-- **No CI/CD pipeline** — deployment is manual via SAM CLI commands.
+- **No CI/CD pipeline** — deployment is manual via SAM CLI commands. CI/CD automation (lint, tests, build, deploy) is the active next work track.
 - No automated testing in CI, no deployment gates, no canary deployments.
-- Planned for Sprint 6+.
 
 ### Monitoring
 
@@ -161,9 +179,9 @@ The static analyzer in `backend/app/services/static_analyzer.py` uses **regex-ba
 
 ### Code Generation
 
-- **No real code generation** — the migration stage produces structured migration plans but does not generate deployable microservice code.
-- Code stubs are limited to suggested class/interface names and package structures.
-- No API gateway configuration, no database schema migration scripts, no deployment manifests are generated.
+- **Code generation works but is not deployed end-to-end**: the agentic codegen loop (architecture → plan → generate → review, max 3 iterations) produces deployable Spring Boot 3 + Java 17 microservice scaffolds via Bedrock with deterministic fallbacks. It runs **in-process in the backend Lambda** — the codegen worker/SQS Lambda path is **not deployed** in the SAM template.
+- Generated services cover core scaffolding (pom, config, controllers, services, repositories, entities, tests) with Kafka/RabbitMQ listener wiring and Feign clients; they are a starting point, not a finished production service.
+- No API Gateway route wiring, no database migration scripts, no deployment manifests are generated.
 
 ### Reports
 

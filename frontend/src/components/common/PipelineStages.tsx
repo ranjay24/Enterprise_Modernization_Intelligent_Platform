@@ -59,16 +59,20 @@ const phaseIcons: Record<string, string> = {
 interface PipelineStagesProps {
   currentPhase: string | null;
   progress: number;
+  completedPhases?: string[];
   onRetry?: (phase: string) => void;
 }
 
-export function PipelineStages({ currentPhase, progress, onRetry }: PipelineStagesProps) {
+const TERMINAL_PHASES = new Set(['analysis_complete', 'completed_with_errors', 'generation_complete', 'generation_with_warnings']);
+
+export function PipelineStages({ currentPhase, progress, completedPhases, onRetry }: PipelineStagesProps) {
   const [expandedPhase, setExpandedPhase] = useState<string | null>(null);
 
   const phaseIdx = allPhases.indexOf(currentPhase || '');
-  const showAllDone = currentPhase === 'analysis_complete' || currentPhase === 'completed_with_errors';
+  const showAllDone = TERMINAL_PHASES.has(currentPhase || '');
   const isFailed = currentPhase === 'failed';
-  const effectiveIdx = showAllDone ? allPhases.length : (phaseIdx >= 0 ? phaseIdx : 0);
+  const completedCount = (completedPhases || []).filter((p) => allPhases.includes(p)).length;
+  const effectiveIdx = showAllDone ? allPhases.length : Math.max(phaseIdx, completedCount);
 
   return (
     <div className="w-full space-y-1">

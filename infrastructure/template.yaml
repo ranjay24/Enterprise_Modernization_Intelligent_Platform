@@ -25,7 +25,8 @@ Globals:
         EVENTBRIDGE_BUS_NAME: !Ref EventsBus
         CHECKPOINT_ENABLED: "true"
         ARTIFACT_VERSION: "1.0.0"
-        CORS_ORIGINS: "*"
+        CORS_ORIGINS: !Ref CorsOrigins
+        EMIP_API_KEY: !Ref ApiKey
 
 Parameters:
   Environment:
@@ -48,6 +49,22 @@ Parameters:
   DynamoDBAnalysisTable:
     Type: String
     Default: emip-analysis-dev
+  CorsOrigins:
+    Type: String
+    Default: "http://emip-frontend-479752407378.s3-website-us-east-1.amazonaws.com,http://localhost:5173,http://localhost:3000"
+    Description: Comma-separated CORS origins (hosted frontend + localhost dev)
+  NotificationEmail:
+    Type: String
+    Default: ""
+    Description: Email address for pipeline notification subscriptions (empty = no subscription)
+
+Conditions:
+  ApiKeyNotConfigured: !Equals [!Ref ApiKey, ""]
+  ApiKeyConfigured: !Not
+    - Condition: ApiKeyNotConfigured
+  NotificationEmailNotConfigured: !Equals [!Ref NotificationEmail, ""]
+  NotificationEmailConfigured: !Not
+    - Condition: NotificationEmailNotConfigured
 
 Resources:
   # --- API Gateway ---
@@ -58,9 +75,12 @@ Resources:
       StageName: !Ref Environment
       BinaryMediaTypes:
         - "*/*"
+      # Preflight (OPTIONS) is answered by API Gateway. Actual responses carry
+      # the Access-Control-Allow-Origin from the Lambda (FastAPI CORSMiddleware),
+      # which is the authoritative per-origin gate for CORS_ORIGINS.
       Cors:
-        AllowMethods: "'*'"
-        AllowHeaders: "'*'"
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-API-Key'"
         AllowOrigin: "'*'"
       TracingEnabled: true
       Auth:
@@ -71,6 +91,35 @@ Resources:
           LoggingLevel: INFO
           DataTraceEnabled: false
           MetricsEnabled: true
+
+  # --- API Key + Usage Plan (only when an ApiKey parameter is provided) ---
+  GatewayApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    Condition: ApiKeyConfigured
+    Properties:
+      Description: EMIP API access key
+      Enabled: true
+      Value: !Ref ApiKey
+      StageKeys:
+        - RestApiId: !Ref ApiGateway
+          StageName: !Ref Environment
+
+  UsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Condition: ApiKeyConfigured
+    Properties:
+      Description: EMIP API usage plan
+      ApiStages:
+        - ApiId: !Ref ApiGateway
+          Stage: !Ref Environment
+
+  UsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Condition: ApiKeyConfigured
+    Properties:
+      KeyId: !Ref GatewayApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref UsagePlan
 
   # --- Lambda Layer ---
   DependenciesLayer:
@@ -111,6 +160,11 @@ Resources:
     Properties:
       TableName: !Ref DynamoDBJobsTable
       BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: job_id
           AttributeType: S
@@ -125,6 +179,11 @@ Resources:
     Properties:
       TableName: !Ref DynamoDBAnalysisTable
       BillingMode: PAY_PER_REQUEST
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: job_id
           AttributeType: S
@@ -142,12 +201,14 @@ Resources:
     Properties:
       QueueName: !Sub "emip-analysis-dlq-${Environment}"
       MessageRetentionPeriod: 1209600
+      KmsMasterKeyId: alias/aws/sqs
 
   AnalysisQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub "emip-analysis-queue-${Environment}"
       VisibilityTimeout: 660
+      KmsMasterKeyId: alias/aws/sqs
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt AnalysisDLQ.Arn
         maxReceiveCount: 3
@@ -163,6 +224,54 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       TopicName: !Sub "emip-notifications-${Environment}"
+
+  # Allow EventBridge (the custom bus) to publish pipeline events to SNS.
+  NotificationTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref NotificationTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEventBridgeToPublish
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref NotificationTopic
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !GetAtt EventsBus.Arn
+
+  # Pipeline event rule: publish terminal + failure events to the SNS topic.
+  PipelineEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "emip-pipeline-notifications-${Environment}"
+      EventBusName: !Ref EventsBus
+      EventPattern:
+        source:
+          - emip.pipeline
+        detail-type:
+          - pipeline.completed
+          - pipeline.failed
+          - pipeline.stage.failed
+        detail:
+          schema_version:
+            - prefix: "1."
+      Targets:
+        - Arn: !Ref NotificationTopic
+          Id: NotifyPipelineEvents
+
+  # Email subscription (only when NotificationEmail is provided).
+  NotificationEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: NotificationEmailConfigured
+    Properties:
+      TopicArn: !Ref NotificationTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
 
   # --- CloudWatch Log Groups ---
   BackendLogGroup:
@@ -240,7 +349,10 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:Converse
-              Resource: "*"
+              Resource:
+                - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-pro-v1:0
+                - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-lite-v1:0
+                - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-micro-v1:0
         - Statement:
             - Effect: Allow
               Action:
@@ -341,7 +453,10 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:Converse
-              Resource: "*"
+              Resource:
+                - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-pro-v1:0
+                - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-lite-v1:0
+                - !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-micro-v1:0
         - Statement:
             - Effect: Allow
               Action:

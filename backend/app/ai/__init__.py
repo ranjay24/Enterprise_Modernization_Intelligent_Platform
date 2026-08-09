@@ -50,9 +50,9 @@ def generate_migration_waves(boundaries: list[dict], readiness: dict) -> dict:
     return _fn(boundaries, readiness)
 
 
-def generate_cost_comparison(analysis_data: dict, boundaries: list[dict]) -> dict:
+def generate_cost_comparison(analysis_data: dict, boundaries: list[dict], pricing=None) -> dict:
     from app.ai.orchestrator import generate_cost_comparison as _fn
-    return _fn(analysis_data, boundaries)
+    return _fn(analysis_data, boundaries, pricing=pricing)
 
 
 def generate_explainability(boundaries: list[dict], readiness: dict, analysis_data: dict) -> dict:

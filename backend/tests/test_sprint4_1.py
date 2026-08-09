@@ -45,9 +45,8 @@ class TestPipelineResumeWithArtifactRestoration:
         assert "stage_a" in state.stages
         assert "stage_b" in state.stages
 
-    def test_resume_does_not_double_load_already_restored(self):
+    def test_resume_does_not_double_load_prior_stage(self):
         from app.artifacts.models import Artifact, ArtifactMetadata
-        from app.pipeline.context import PipelineContext
         from app.pipeline.engine import PipelineEngine
         from app.pipeline.stage import PipelineStage
 
@@ -57,7 +56,7 @@ class TestPipelineResumeWithArtifactRestoration:
             @property
             def phase(self): return "static_analysis"
             def execute(self, ctx):
-                return Artifact(metadata=ArtifactMetadata(), content={})
+                raise AssertionError("stage_a should not re-execute during resume")
 
         class StageB(PipelineStage):
             @property
@@ -65,29 +64,26 @@ class TestPipelineResumeWithArtifactRestoration:
             @property
             def phase(self): return "static_analysis"
             def execute(self, ctx):
-                return Artifact(metadata=ArtifactMetadata(), content={})
+                return Artifact(metadata=ArtifactMetadata(), content={"b": True})
 
         mock_repo = MagicMock()
+        mock_repo.load.return_value = Artifact(
+            metadata=ArtifactMetadata(artifact_type="stage_a"),
+            content={"pre": True},
+        )
+        mock_repo.save.return_value = "jobs/j1/artifacts/stage_b.json"
+
         engine = PipelineEngine(stages=[StageA(), StageB()], artifact_repo=mock_repo)
+        state = engine.execute("j1", resume_from="stage_b")
 
-        # Manually set context results before calling execute
-        # to simulate a case where artifact was already restored
-        ctx = PipelineContext(job_id="j1")
-        existing = Artifact(metadata=ArtifactMetadata(artifact_type="stage_a"), content={"pre": True})
-        ctx.set_result("stage_a", existing)
-
-        # Test through SequentialExecutor which holds _restore_artifact
-        from app.scheduling.executor import SequentialExecutor
-        executor = SequentialExecutor(stages=[StageA(), StageB()], artifact_repo=mock_repo)
-        executor._restore_artifact("j1", "stage_a", ctx)
-        # Should not have called S3 since artifact is already in context
-        mock_repo.load.assert_not_called()
+        # Prior stage is restored from S3 as cached and NOT re-executed
+        assert state.stages["stage_a"].status.value == "cached"
+        assert state.stages["stage_a"].artifact_key is not None
 
     def test_resume_skips_stages_before_resume_point(self):
         from app.artifacts.models import Artifact, ArtifactMetadata
         from app.pipeline.engine import PipelineEngine
         from app.pipeline.stage import PipelineStage
-        from app.pipeline.state import PipelineStatus
 
         class StageA(PipelineStage):
             @property
@@ -123,10 +119,10 @@ class TestPipelineResumeWithArtifactRestoration:
         engine = PipelineEngine(stages=[StageA(), StageB(), StageC()], artifact_repo=mock_repo)
         state = engine.execute("j1", resume_from="stage_c")
 
-        # StageA and StageB should be skipped/restored (not executed)
-        # Only StageC should have been executed
-        assert state.stages["stage_a"].status in (PipelineStatus.COMPLETED, PipelineStatus.SKIPPED)
-        assert state.stages["stage_b"].status in (PipelineStatus.COMPLETED, PipelineStatus.SKIPPED)
+        # StageA and StageB should be restored from S3 (cached), not executed
+        assert state.stages["stage_a"].status.value == "cached"
+        assert state.stages["stage_b"].status.value == "cached"
+        assert "stage_c" in state.stages
 
 
 # ─── Checkpoint Recovery ───
@@ -304,6 +300,9 @@ class TestBaseAIStage:
 
         assert artifact.content["from_fallback"] is True
         assert artifact.metadata.is_degraded is True
+        # Model id honesty: empty AI output is flagged with "-empty" suffix, not
+        # silently reported as a clean model success.
+        assert artifact.metadata.model_id == "nova-pro-empty"
 
     def test_prerequisites_default_empty(self):
         from app.pipeline.context import PipelineContext

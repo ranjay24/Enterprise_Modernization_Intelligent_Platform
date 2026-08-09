@@ -55,7 +55,9 @@ class ServicePlannerAgent(Agent):
                 if source and target:
                     feign_clients_by_source.setdefault(source, []).append(target)
 
-        waves = [{"wave": 0, "name": "Platform", "services": ["api-gateway", "config-server", "discovery"], "rationale": "foundation services"}]
+        # Unique port per service; 8080 is reserved for the API gateway (deployment-level).
+        ports = {sid: 8081 + i for i, sid in enumerate(svc_ids)}
+        waves: list[dict] = []
         service_plans: dict[str, dict] = {}
         for svc in services:
             svc_id = codegen_models.normalize_service_id(svc)
@@ -64,13 +66,14 @@ class ServicePlannerAgent(Agent):
 
             # Get Feign clients for this service
             feign_targets = feign_clients_by_source.get(svc_id, [])
-            feign_list = [{"name": f"{t}Client", "target_service": t} for t in feign_targets]
+            feign_list = [{"name": f"{t}Client", "target_service": t, "target_port": ports.get(t, 8081)} for t in feign_targets]
 
             service_plans[svc_id] = {
                 "id": svc_id,
                 "package": f"com.emip.{svc_id.lower().replace('-', '')}",
                 "source_boundary": svc.get("source_boundary", svc.get("name", svc_id)),
                 "source_classes": [],
+                "server_port": ports.get(svc_id, 8081),
                 "exposed_endpoints": svc.get("exposed_endpoints", []),
                 "internal_endpoints": [],
                 "feign_clients": feign_list,
@@ -88,7 +91,7 @@ class ServicePlannerAgent(Agent):
             }
 
         if svc_ids:
-            waves.append({"wave": 1, "name": "Core Business", "services": svc_ids, "rationale": "business services"})
+            waves.append({"wave": 0, "name": "Core Business", "services": svc_ids, "rationale": "business services"})
 
         return {
             "version": "1.0.0",

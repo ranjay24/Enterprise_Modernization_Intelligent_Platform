@@ -82,9 +82,8 @@ export const mockWorkflowSteps: WorkflowStep[] = [
 ];
 
 export const defaultValidations: UploadValidation[] = [
-  { id: 'v1', label: 'ZIP format verified', description: 'File is a valid ZIP archive', status: 'pending', icon: 'FileArchive' },
-  { id: 'v2', label: 'Spring Boot detected', description: 'Checking for Spring Boot project structure', status: 'pending', icon: 'Leaf' },
-  { id: 'v3', label: 'Project structure valid', description: 'Validating source directory layout', status: 'pending', icon: 'FolderCheck' },
-  { id: 'v4', label: 'Duplicate project check', description: 'Verifying this project has not been uploaded before', status: 'pending', icon: 'CopyCheck' },
-  { id: 'v5', label: 'File size acceptable', description: 'Archive is within the 500MB limit', status: 'pending', icon: 'HardDrive' },
+  { id: 'v1', label: 'ZIP format verified', description: 'File begins with a valid ZIP header (PK)', status: 'pending', icon: 'FileArchive' },
+  { id: 'v2', label: 'File size acceptable', description: 'Archive is within the 500 MB upload limit', status: 'pending', icon: 'HardDrive' },
+  { id: 'v3', label: 'File is a .zip archive', description: 'Filename ends with .zip', status: 'pending', icon: 'FileText' },
+  { id: 'v4', label: 'Archive is not empty', description: 'File size is greater than zero bytes', status: 'pending', icon: 'Files' },
 ];

@@ -31,22 +31,31 @@ export function useUploadFlow() {
   const startTimeRef = useRef<number>(0);
   const abortRef = useRef<boolean>(false);
 
+  const readZipHeader = async (file: File): Promise<boolean> => {
+    try {
+      const buf = await file.slice(0, 4).arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      return bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
+    } catch {
+      return false;
+    }
+  };
+
   const runValidation = useCallback(async (file: File) => {
     setStep('validating');
-    const updated = [...defaultValidations];
+    const [zipHeaderOk, sizeOk, nameOk, nonEmpty] = await Promise.all([
+      readZipHeader(file),
+      Promise.resolve(file.size <= 500 * 1024 * 1024),
+      Promise.resolve(/\.zip$/i.test(file.name)),
+      Promise.resolve(file.size > 0),
+    ]);
+    const results: UploadValidation[] = defaultValidations.map((v) => {
+      const ok = v.id === 'v1' ? zipHeaderOk : v.id === 'v2' ? sizeOk : v.id === 'v3' ? nameOk : nonEmpty;
+      return { ...v, status: ok ? 'pass' : 'fail' };
+    });
+    setValidations(results);
 
-    for (let i = 0; i < updated.length; i++) {
-      await new Promise((r) => setTimeout(r, 120 + Math.random() * 80));
-      if (i < 4) {
-        updated[i] = { ...updated[i], status: 'pass' };
-      } else {
-        updated[i] = { ...updated[i], status: file.size <= 500 * 1024 * 1024 ? 'pass' : 'fail' };
-      }
-      setValidations([...updated]);
-    }
-
-    const hasFailure = updated.some((v) => v.status === 'fail');
-    if (hasFailure) {
+    if (results.some((v) => v.status === 'fail')) {
       setErrorType('invalid_zip');
       setStep('error');
       return false;
@@ -77,23 +86,20 @@ export function useUploadFlow() {
       fileName: selectedFile.name, jobId: null, error: null,
     });
 
-    // Simulate upload progress — completes in ~3 seconds
-    const interval = setInterval(() => {
-      if (abortRef.current) { clearInterval(interval); return; }
-      setProgress((prev) => {
-        const elapsed = (Date.now() - startTimeRef.current) / 1000;
-        const uploaded = Math.min(prev.totalBytes * Math.min(elapsed / 3, 1), prev.totalBytes);
-        const pct = (uploaded / prev.totalBytes) * 100;
-        const speed = elapsed > 0 ? uploaded / elapsed : 0;
-        const remaining = speed > 0 ? (prev.totalBytes - uploaded) / speed : 0;
-        return { ...prev, uploadedBytes: uploaded, progress: pct, speed, estimatedRemaining: remaining };
-      });
-    }, 150);
-
     try {
-      const job = await uploadCodebase(selectedFile);
-      if (abortRef.current) { clearInterval(interval); return; }
-      clearInterval(interval);
+      const job = await uploadCodebase(selectedFile, (loaded, total) => {
+        if (abortRef.current) return;
+        const totalBytes = total || selectedFile.size;
+        const elapsed = (Date.now() - startTimeRef.current) / 1000;
+        const speed = elapsed > 0 ? loaded / elapsed : 0;
+        const remaining = speed > 0 ? (totalBytes - loaded) / speed : 0;
+        const pct = totalBytes > 0 ? (loaded / totalBytes) * 100 : 0;
+        setProgress({
+          stage: 'uploading', progress: pct, uploadedBytes: loaded, totalBytes,
+          speed, estimatedRemaining: remaining, fileName: selectedFile.name, jobId: null, error: null,
+        });
+      });
+      if (abortRef.current) return;
 
       setProgress((prev) => ({ ...prev, stage: 'processing', progress: 100, uploadedBytes: prev.totalBytes, speed: 0, estimatedRemaining: 0 }));
 
@@ -108,7 +114,6 @@ export function useUploadFlow() {
       });
       setStep('success');
     } catch (err: unknown) {
-      clearInterval(interval);
       if (abortRef.current) return;
       const msg = err instanceof Error ? err.message : 'Upload failed';
       if (msg.includes('network') || msg.includes('Network')) {

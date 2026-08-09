@@ -98,21 +98,22 @@ class QualityMetricsAnalyzer(Analyzer):
     def _estimate_duplication(self, classes) -> float:
         if not classes:
             return 0.0
-        seen_bodies: dict[str, int] = {}
+        seen_hashes: dict[str, int] = {}
         dup_lines = 0
         total_lines = 0
         for c in classes:
             if not c.method_lines:
                 continue
-            for i, m in enumerate(c.method_lines):
-                start = m["start_line"]
-                end = c.method_lines[i + 1]["start_line"] if i + 1 < len(c.method_lines) else c.lines_of_code
-                body_len = end - start
+            for m in c.method_lines:
+                body_len = (m.get("end_line") or 0) - (m.get("start_line") or 0)
+                if body_len < 5:
+                    continue
                 total_lines += body_len
-                if body_len >= 5:
-                    key = f"{c.name}:{start}"
-                    if key in seen_bodies:
-                        dup_lines += body_len
-                    else:
-                        seen_bodies[key] = body_len
+                body_hash = m.get("body_hash")
+                if not body_hash:
+                    continue
+                if body_hash in seen_hashes:
+                    dup_lines += body_len
+                else:
+                    seen_hashes[body_hash] = body_len
         return (dup_lines / total_lines * 100) if total_lines > 0 else 0.0

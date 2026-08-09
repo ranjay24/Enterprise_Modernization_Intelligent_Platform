@@ -24,7 +24,7 @@ public class {{ event_listener_class }} {
 
 {% for queue in subscribe_queues %}
     @RabbitListener(queues = "{{ queue }}")
-    public void on{{ queue }}(Object message) {
+    public void on{{ queue | method }}(Object message) {
         log.info("consumed_message queue={} message={}", "{{ queue }}", message);
     }
 {% endfor %}

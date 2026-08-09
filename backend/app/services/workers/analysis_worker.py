@@ -157,6 +157,10 @@ def handle_analysis_job(job_id: str, resume_from: str = None) -> dict:
             status_check_fn=lambda: _status_check(job_id),
         )
 
+        # Save checkpoint BEFORE pause/cancel handling so a paused job can
+        # resume from the last completed stage instead of restarting.
+        checkpoint_mgr.save(job_id, state)
+
         # Check if pipeline was paused/cancelled
         current_job = JobRepository().get_job(job_id)
         if current_job and current_job.status in ("paused", "cancelled"):
@@ -172,9 +176,6 @@ def handle_analysis_job(job_id: str, resume_from: str = None) -> dict:
             _store_analysis(job_id, "results", assembled)
         else:
             _store_analysis(job_id, "results", state.to_dict())
-
-        # Save checkpoint
-        checkpoint_mgr.save(job_id, state)
 
         # Finalize job
         if state.status == "completed":

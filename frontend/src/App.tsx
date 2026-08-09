@@ -37,7 +37,6 @@ export default function App() {
             <Route path="/jobs/:jobId/studio" element={<ModernizationStudioPage />} />
             <Route path="/architecture" element={<ArchitecturePage />} />
             <Route path="/studio" element={<StudioIndexPage />} />
-            <Route path="/jobs/:jobId/studio" element={<ModernizationStudioPage />} />
             <Route path="/migration" element={<MigrationPlannerPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/settings" element={<SettingsPage />} />

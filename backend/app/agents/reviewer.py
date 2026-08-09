@@ -62,7 +62,7 @@ class ReviewAgent(Agent):
                 })
                 continue  # Skip other checks if no Java sources
 
-            # If Java sources exist, service is valid - only minor warnings for missing config
+            # If Java sources exist, service is valid - only warnings for missing config
             findings.append({
                 "id": f"{service_id}-java-ok",
                 "severity": "info",
@@ -71,6 +71,21 @@ class ReviewAgent(Agent):
                 "finding": f"{service_id}: Complete Java source structure verified",
                 "recommendation": None,
             })
+
+            # Code quality: an entity layer MUST have a matching repository (JPA data layer).
+            # Missing it is a blocking finding so the replan->regenerate loop actually runs.
+            pkg_dir = next((p.rsplit("/", 1)[0] for p in paths if p.endswith(".java")), "src/main/java")
+            has_entity = any("domain/" in p.lower() and p.endswith(".java") for p in paths)
+            has_repository = any("repository/" in p.lower() and p.endswith(".java") for p in paths)
+            if has_entity and not has_repository:
+                findings.append({
+                    "id": f"{service_id}-no-repository",
+                    "severity": "major",
+                    "category": "completeness",
+                    "file": f"{pkg_dir}/repository",
+                    "finding": f"{service_id}: entity layer exists but no repository/JpaRepository was generated",
+                    "recommendation": "Add a Spring Data JpaRepository for the entity and wire it in the service layer",
+                })
 
             # Check for config files - these are MINOR (not blocking)
             has_pom = any(p.endswith("pom.xml") for p in paths)
@@ -108,16 +123,17 @@ class ReviewAgent(Agent):
                     "recommendation": None,
                 })
 
-        # Calculate approval - only CRITICAL issues block approval
-        critical_findings = [f for f in findings if f.get("severity") == "critical"]
-        approved = len(critical_findings) == 0
+        # Calculate approval - critical or major findings block approval
+        # (matches the code_reviewer prompt rule: critical/major -> approved false)
+        blocking = [f for f in findings if f.get("severity") in ("critical", "major")]
+        approved = len(blocking) == 0
 
         return {
             "service_id": ",".join(s.get("service_id", "") for s in services_code),
             "iteration": 0,
             "approved": approved,
-            "summary": f"{len(findings)} findings ({len(critical_findings)} critical)" if critical_findings else f"All services approved - {len(findings)} notes",
-            "score": 100 if approved else max(10, 100 - len(critical_findings) * 30),
+            "summary": f"{len(findings)} findings ({len(blocking)} blocking)" if blocking else f"All services approved - {len(findings)} notes",
+            "score": 100 if approved else max(10, 100 - len(blocking) * 30),
             "findings": findings,
         }
 

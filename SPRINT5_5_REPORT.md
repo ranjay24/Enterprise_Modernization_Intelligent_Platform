@@ -82,7 +82,7 @@ All infrastructure verified operational:
 | Cancel queued | ✅ Pipeline stops gracefully | 6 stages completed, rest cancelled |
 | Resume paused | ✅ Status reset to "uploaded" | Ready for re-analysis |
 | Delete job | ✅ S3 + DynamoDB cleanup | Subsequent GET = 404 |
-| Graceful degradation | ✅ 4-level fallback chain | AI failure → deterministic → empty result → pipeline continues |
+| Graceful degradation | ✅ Deterministic fallback | AI failure → deterministic fallback → pipeline continues (2-step chain in `BaseAIStage`) |
 
 **Bugs fixed during Phase C:**
 - `dynamodb.py:100` — `ExpressionAttributeNames=None` caused boto3 `AttributeError: 'NoneType' object has no attribute 'update'`. Root cause: empty `{}` was coerced to `None`, and boto3's `inject_condition_expressions` hook calls `.update()` on it. Fixed by omitting the param when empty.

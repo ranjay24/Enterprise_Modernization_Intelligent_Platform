@@ -172,11 +172,11 @@ export function DashboardHero({ overallScore, confidence, statusLabel, statusCol
 
           {/* Action bar */}
           <motion.div variants={itemVariants} className="flex items-center gap-3 mt-8 pt-6 border-t border-[var(--border-subtle)]">
-            <Button variant="primary" className="gap-2">
+            <Button variant="primary" className="gap-2" disabled title="Coming soon">
               <Download className="w-4 h-4" />
               Download Report
             </Button>
-            <Button variant="secondary" className="gap-2">
+            <Button variant="secondary" className="gap-2" disabled title="Coming soon">
               <GitBranch className="w-4 h-4" />
               View Architecture
             </Button>

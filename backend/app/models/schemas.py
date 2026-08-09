@@ -11,23 +11,30 @@ class JobStatus(str, Enum):
     ANALYSIS_COMPLETE = "analysis_complete"
     GENERATING = "generating"
     GENERATION_COMPLETE = "generation_complete"
+    GENERATION_WITH_WARNINGS = "generation_with_warnings"
     DEPLOYING = "deploying"
     DEPLOYED = "deployed"
     FAILED = "failed"
 
 
 class AnalysisPhase(str, Enum):
-    UPLOAD = "upload"
-    EXTRACTING = "extracting"
+    """Real pipeline stage names emitted by the worker (see app/pipeline/stages/).
+
+    Aligned with PipelineStage.name and frontend PipelineStages.allPhases.
+    """
+    EXTRACTION = "extraction"
     STATIC_ANALYSIS = "static_analysis"
-    SERVICE_BOUNDARY = "service_boundary"
-    READINESS_SCORING = "readiness_scoring"
-    ADR_GENERATION = "adr_generation"
-    MIGRATION_PLANNING = "migration_planning"
-    COST_ANALYSIS = "cost_analysis"
-    EXPLAINABILITY = "explainability"
+    ENTERPRISE_ANALYSIS = "enterprise_analysis"
+    AI_BOUNDARIES = "ai_boundaries"
+    AI_READINESS = "ai_readiness"
+    AI_ADRS = "ai_adrs"
+    AI_MIGRATION = "ai_migration"
+    AI_COST = "ai_cost"
+    AI_EXPLAINABILITY = "ai_explainability"
+    RESULTS_ASSEMBLY = "results_assembly"
+    REPORT_GENERATION = "report_generation"
+    MANIFEST = "manifest"
     CODE_GENERATION = "code_generation"
-    DEPLOYMENT = "deployment"
     ANALYSIS_COMPLETE = "analysis_complete"
 
 

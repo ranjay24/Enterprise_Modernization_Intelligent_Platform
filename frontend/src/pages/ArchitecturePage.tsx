@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   GitBranch,
   Box,
@@ -14,6 +14,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useNodesState, useEdgesState, Handle, Position, type NodeProps } from 'reactflow';
+import type { Node as RFNode, Edge as RFEdge } from 'reactflow';
 import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { listJobs, getAnalysisResults, getCodeGenArchitecture, getCodeGenStatus } from '@/services/jobService';
@@ -24,10 +25,14 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { TableSkeleton } from '@/components/common/LoadingSkeleton';
 import { ArchitectureGraph, ArchitectureLegend } from '@/components/codegen/ArchitectureGraph';
 import { cn } from '@/utils/cn';
+import type { JobResponse, ServiceBoundary, AnalysisResult } from '@/types/api';
+import type { CodeGenService, ArchitectureNode } from '@/types/codegen';
+import type { CircularDependencyMetric } from '@/types/metrics';
 
 type View = 'target' | 'current';
 
 export default function ArchitecturePage() {
+  const navigate = useNavigate();
   const [view, setView] = useState<View>('target');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
 
@@ -36,7 +41,7 @@ export default function ArchitecturePage() {
   });
 
   const codegenReadyJobs = useMemo(
-    () => (jobsData?.jobs || []).filter((j: any) =>
+    () => (jobsData?.jobs || []).filter((j: JobResponse) =>
       ['analysis_complete', 'generation_complete', 'generation_with_warnings', 'generating'].includes(j.status)
     ),
     [jobsData]
@@ -65,12 +70,8 @@ export default function ArchitecturePage() {
     staleTime: 30000,
   });
 
-  const services = useMemo(() => (results?.service_boundaries || []) as any[], [results]);
-  const metrics = useMemo(() => (results?.metrics || {}) as any, [results]);
-  const circularDeps = useMemo(() => metrics.circular_dependencies || [], [metrics]);
-
   const isLoading = jobsLoading || (view === 'current' ? resultsLoading : designLoading);
-  const generatedServices = design?.generated_services || design?.services?.map((s: any) => s.id) || [];
+  const generatedServices = design?.generated_services || design?.services?.map((s: CodeGenService) => s.id) || [];
 
   if (isLoading && !jobsLoading && view === 'current' && !results) {
     return <div className="p-6 lg:p-8 max-w-[1440px] mx-auto"><TableSkeleton rows={5} /></div>;
@@ -93,7 +94,7 @@ export default function ArchitecturePage() {
               onChange={(e) => setSelectedJobId(e.target.value)}
               className="h-8 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] text-xs text-[var(--text-primary)] px-2.5 focus-ring"
             >
-              {codegenReadyJobs.map((j: any) => (
+              {codegenReadyJobs.map((j: JobResponse) => (
                 <option key={j.job_id} value={j.job_id}>
                   {j.filename} · {j.job_id.slice(0, 8)}
                 </option>
@@ -135,9 +136,9 @@ export default function ArchitecturePage() {
           <>
             <div className="grid grid-cols-4 gap-3">
               {[
-                { icon: Box, label: 'Target Services', value: design.services?.length ?? design.nodes?.filter((n: any) => n.type === 'service').length ?? 0, color: 'bg-[var(--info-bg)] text-[var(--accent-blue)]' },
-                { icon: Database, label: 'Databases', value: design.nodes?.filter((n: any) => n.type === 'database').length ?? 0, color: 'bg-[var(--success-bg)] text-[var(--success)]' },
-                { icon: Radio, label: 'Message Brokers', value: design.nodes?.filter((n: any) => n.type === 'broker').length ?? 0, color: 'bg-[var(--warning-bg)] text-[var(--warning)]' },
+                { icon: Box, label: 'Target Services', value: design.services?.length ?? design.nodes?.filter((n: ArchitectureNode) => n.type === 'service').length ?? 0, color: 'bg-[var(--info-bg)] text-[var(--accent-blue)]' },
+                { icon: Database, label: 'Databases', value: design.nodes?.filter((n: ArchitectureNode) => n.type === 'database').length ?? 0, color: 'bg-[var(--success-bg)] text-[var(--success)]' },
+                { icon: Radio, label: 'Message Brokers', value: design.nodes?.filter((n: ArchitectureNode) => n.type === 'broker').length ?? 0, color: 'bg-[var(--warning-bg)] text-[var(--warning)]' },
                 { icon: GitBranch, label: 'Connections', value: design.edges?.length ?? 0, color: 'bg-[var(--border-subtle)] text-[var(--text-muted)]' },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
@@ -171,10 +172,10 @@ export default function ArchitecturePage() {
             <ArchitectureGraph
               design={design}
               height="h-[520px]"
-              onSelectNode={(node: any) => {
+              onSelectNode={(node: ArchitectureNode) => {
                 // navigate to studio on service click
                 if (activeJobId && node?.type === 'service') {
-                  window.location.href = `/jobs/${activeJobId}/studio?tab=plan`;
+                  navigate(`/jobs/${activeJobId}/studio?tab=plan`);
                 }
               }}
             />
@@ -182,7 +183,7 @@ export default function ArchitecturePage() {
 
             {design.services && design.services.length > 0 && (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {design.services.map((svc: any) => (
+                {design.services.map((svc: CodeGenService) => (
                   <div key={svc.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-semibold text-[var(--text-primary)]">{svc.name || svc.id}</span>
@@ -233,7 +234,7 @@ export default function ArchitecturePage() {
           </div>
         )
       ) : results ? (
-        <CurrentArchitectureView results={results} activeJobId={activeJobId} />
+        <CurrentArchitectureView key={activeJobId} results={results} activeJobId={activeJobId} />
       ) : (
         <EmptyState
           icon={<GitBranch className="w-8 h-8" />}
@@ -246,23 +247,23 @@ export default function ArchitecturePage() {
   );
 }
 
-function CurrentArchitectureView({ results, activeJobId }: { results: any; activeJobId?: string }) {
-  const [selectedService, setSelectedService] = useState<any>(null);
-  const services = (results.service_boundaries || []) as any[];
-  const metrics = (results.metrics || {}) as any;
-  const circularDeps = metrics.circular_dependencies || [];
+function CurrentArchitectureView({ results, activeJobId }: { results: AnalysisResult; activeJobId?: string }) {
+  const [selectedService, setSelectedService] = useState<ServiceBoundary | null>(null);
+  const services = results.service_boundaries || [];
+  const metrics = (results.metrics || {}) as Record<string, unknown>;
+  const circularDeps = (metrics.circular_dependencies || []) as CircularDependencyMetric[];
 
-  const initialNodes = services.map((svc: any, i: number) => ({
+  const initialNodes = services.map((svc: ServiceBoundary, i: number) => ({
     id: svc.name || `svc-${i}`,
     type: 'service',
     position: { x: 200 + (i % 3) * 280, y: 80 + Math.floor(i / 3) * 160 },
     data: { service: svc, nodeType: 'service' },
   }));
 
-  const initialEdges: any[] = [];
-  services.forEach((svc: any) => {
+  const initialEdges: RFEdge[] = [];
+  services.forEach((svc: ServiceBoundary) => {
     (svc.dependencies || []).forEach((dep: string) => {
-      if (services.some((s: any) => s.name === dep)) {
+      if (services.some((s: ServiceBoundary) => s.name === dep)) {
         initialEdges.push({
           id: `${svc.name}-${dep}`,
           source: svc.name,
@@ -279,7 +280,7 @@ function CurrentArchitectureView({ results, activeJobId }: { results: any; activ
       <div className="grid grid-cols-3 gap-3">
         {[
           { icon: Box, label: 'Services Identified', value: services.length, color: 'bg-[var(--info-bg)] text-[var(--accent-blue)]' },
-          { icon: Database, label: 'Total Classes', value: metrics.total_classes || 0, color: 'bg-[var(--success-bg)] text-[var(--success)]' },
+          { icon: Database, label: 'Total Classes', value: Number(metrics.total_classes) || 0, color: 'bg-[var(--success-bg)] text-[var(--success)]' },
           { icon: AlertTriangle, label: 'Circular Dependencies', value: circularDeps.length, color: circularDeps.length > 0 ? 'bg-[var(--danger-bg)] text-[var(--risk)]' : 'bg-[var(--border-subtle)] text-[var(--text-muted)]' },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
@@ -325,7 +326,7 @@ function CurrentArchitectureView({ results, activeJobId }: { results: any; activ
             <div className="space-y-1.5 text-[11px] text-[var(--text-muted)] mb-4">
               {selectedService.api_endpoints?.length > 0 && (
                 <p><span className="font-medium text-[var(--text-primary)]">Endpoints:</span>{' '}
-                  {selectedService.api_endpoints.map((ep: any) => `${ep.method || 'GET'} ${ep.path || ep.handler_class || ''}`).join(', ')}
+                  {selectedService.api_endpoints.map((ep) => `${ep.method || 'GET'} ${ep.path || ep.handler_class || ''}`).join(', ')}
                 </p>
               )}
               <p><span className="font-medium text-[var(--text-primary)]">Packages:</span> {(selectedService.packages || []).join(', ') || 'N/A'}</p>
@@ -353,7 +354,7 @@ function CurrentArchitectureView({ results, activeJobId }: { results: any; activ
   );
 }
 
-function CurrentGraph({ nodes, edges, onSelect }: { nodes: any[]; edges: any[]; onSelect: (s: any) => void }) {
+function CurrentGraph({ nodes, edges, onSelect }: { nodes: RFNode[]; edges: RFEdge[]; onSelect: (s: ServiceBoundary) => void }) {
   return (
     <CurrentFlow nodes={nodes} edges={edges} onSelect={onSelect} />
   );
@@ -390,9 +391,15 @@ function CurrentServiceNode({ data }: NodeProps) {
   );
 }
 
-function CurrentFlow({ nodes, edges, onSelect }: { nodes: any[]; edges: any[]; onSelect: (s: any) => void }) {
-  const [rfNodes, , onNodesChange] = useNodesState(nodes);
-  const [rfEdges, , onEdgesChange] = useEdgesState(edges);
+function CurrentFlow({ nodes, edges, onSelect }: { nodes: RFNode[]; edges: RFEdge[]; onSelect: (s: ServiceBoundary) => void }) {
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState(nodes);
+  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(edges);
+
+  useEffect(() => {
+    setRfNodes(nodes);
+    setRfEdges(edges);
+  }, [nodes, edges, setRfNodes, setRfEdges]);
+
   return (
     <ReactFlow
       nodes={rfNodes}

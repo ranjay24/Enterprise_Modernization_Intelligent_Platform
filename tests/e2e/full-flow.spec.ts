@@ -1,327 +1,137 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'http://localhost:5173';
-const API_BASE = 'http://localhost:8000';
+// Demo-mode smoke walkthrough (P7.7).
+//
+// Runs entirely against the Vite dev server in demo mode: no live backend, no
+// 30-minute polls, no console.log soft-checks. Every step is a hard assertion.
+// The walkthrough mirrors the demo product flow: dashboard → upload (real ZIP
+// validation) → jobs (sample analyses) → results (full sample report).
+//
+// Demo mode is enabled per-page via localStorage before app boot, matching
+// useAppStore.getInitialDemoMode().
 
-test.describe('EMIP End-to-End Tests', () => {
-  let page: Page;
-  let jobId: string;
+const DEMO_JOB_ID = 'job-bank-003';
 
-  test.beforeEach(async ({ browser }) => {
-    page = await browser.newPage();
-    await page.goto(BASE_URL);
-  });
+// Minimal, valid ZIP magic bytes (PK\x03\x04) so real client-side validation passes.
+function zipBuffer(): Buffer {
+  return Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.alloc(64, 0)]);
+}
 
-  test.afterEach(async () => {
-    await page.close();
-  });
-
-  // ============= Phase 1: Upload & Analyze =============
-  test('Phase 1: Upload monolith and start analysis', async () => {
-    // Navigate to upload
-    await page.click('text=Upload');
-    await expect(page).toHaveURL(/.*upload/);
-
-    // Check upload form exists
-    const uploadInput = page.locator('input[type="file"]');
-    await expect(uploadInput).toBeVisible();
-
-    console.log('✓ Phase 1: Upload page loaded');
-  });
-
-  test('Phase 2: Verify analysis pipeline starts', async () => {
-    // Go to jobs
-    await page.click('text=Jobs');
-    await expect(page).toHaveURL(/.*jobs/);
-
-    // Wait for jobs list
-    await page.waitForSelector('text=Running Jobs');
-    const jobCount = await page.locator('text=Running Jobs').count();
-
-    if (jobCount > 0) {
-      console.log('✓ Phase 2: Analysis pipeline detected');
-    }
-  });
-
-  test('Phase 3: Monitor analysis progress', async () => {
-    // Go to jobs
-    await page.click('text=Jobs');
-
-    // Wait for pipeline overview
-    await page.waitForSelector('text=Pipeline Overview', { timeout: 5000 });
-
-    // Check stages are visible
-    const stages = [
-      'Extraction',
-      'Static Analysis',
-      'Service Boundaries',
-      'Readiness Scoring',
-      'Cost Analysis',
-      'Report Generation'
-    ];
-
-    for (const stage of stages) {
-      const stageEl = page.locator(`text=${stage}`);
-      if (await stageEl.isVisible()) {
-        console.log(`✓ Stage found: ${stage}`);
-      }
-    }
-  });
-
-  test('Phase 4: Wait for analysis completion', async () => {
-    // Poll jobs until one completes
-    for (let i = 0; i < 180; i++) { // Max 30 minutes
-      await page.goto(`${BASE_URL}/jobs`);
-
-      const completedSection = page.locator('text=Completed');
-      if (await completedSection.isVisible()) {
-        console.log('✓ Phase 4: Analysis completed');
-
-        // Extract job ID from first completed job
-        const jobLink = page.locator('a:has-text("results")').first();
-        const href = await jobLink.getAttribute('href');
-        jobId = href?.split('/')[2] || '';
-        console.log(`Job ID: ${jobId}`);
-        return;
-      }
-
-      await page.waitForTimeout(10000); // Wait 10s before retry
-    }
-    throw new Error('Analysis did not complete');
-  });
-
-  // ============= Phase 5: Results & Reports =============
-  test('Phase 5: View analysis results', async () => {
-    if (!jobId) {
-      console.log('⊘ Skipping: jobId not set');
-      return;
-    }
-
-    await page.goto(`${BASE_URL}/jobs/${jobId}/results`);
-    await page.waitForSelector('text=Enterprise Modernization Intelligence', { timeout: 10000 });
-
-    // Verify result sections
-    const sections = [
-      'Readiness Assessment',
-      'Architecture Intelligence',
-      'Risk Analysis',
-      'Cost and ROI',
-      'Migration Roadmap'
-    ];
-
-    for (const section of sections) {
-      const visible = await page.locator(`text=${section}`).isVisible();
-      console.log(`${visible ? '✓' : '✗'} ${section}`);
-    }
-  });
-
-  test('Phase 6: Check Reports page', async () => {
-    await page.click('text=Reports');
-    await expect(page).toHaveURL(/.*reports/);
-
-    // Check report sections load
-    await page.waitForSelector('text=Readiness Assessment', { timeout: 5000 });
-    console.log('✓ Phase 6: Reports page loaded with data');
-  });
-
-  test('Phase 7: Check Migration page', async () => {
-    await page.click('text=Migration');
-
-    const migrationPage = page.locator('text=Migration Planner');
-    if (await migrationPage.isVisible()) {
-      console.log('✓ Phase 7: Migration Planner loaded');
-
-      // Check wave timeline
-      const waves = await page.locator('[role="progressbar"]').count();
-      console.log(`  Waves detected: ${waves}`);
-    }
-  });
-
-  // ============= Phase 8: Code Generation =============
-  test('Phase 8: Start code generation', async () => {
-    if (!jobId) {
-      console.log('⊘ Skipping: jobId not set');
-      return;
-    }
-
-    await page.goto(`${BASE_URL}/jobs/${jobId}/results`);
-
-    // Find and click "Generate" button
-    const genButton = page.locator('button:has-text("Generate")').first();
-    if (await genButton.isVisible()) {
-      await genButton.click();
-      console.log('✓ Phase 8: Code generation started');
-    } else {
-      console.log('⊘ Generate button not found');
-    }
-  });
-
-  test('Phase 9: Modernization Studio - Check agent pipeline', async () => {
-    if (!jobId) {
-      console.log('⊘ Skipping: jobId not set');
-      return;
-    }
-
-    await page.goto(`${BASE_URL}/jobs/${jobId}/studio`);
-
-    // Wait for studio to load
-    await page.waitForSelector('text=Modernization Studio', { timeout: 5000 });
-
-    // Check agent pipeline
-    const agents = [
-      'Architecture Designer',
-      'Service Planner',
-      'Code Generator',
-      'Review Agent'
-    ];
-
-    for (const agent of agents) {
-      const visible = await page.locator(`text=${agent}`).isVisible();
-      console.log(`${visible ? '✓' : '✗'} ${agent}`);
-    }
-  });
-
-  test('Phase 10: Check Architecture tab', async () => {
-    if (!jobId) {
-      console.log('⊘ Skipping: jobId not set');
-      return;
-    }
-
-    await page.goto(`${BASE_URL}/jobs/${jobId}/studio`);
-
-    // Click Architecture tab
-    await page.click('button:has-text("Architecture")');
-    await page.waitForTimeout(2000);
-
-    // Check for service cards
-    const serviceCards = await page.locator('[class*="card"]').count();
-    if (serviceCards > 0) {
-      console.log(`✓ Phase 10: Architecture tab - ${serviceCards} service cards found`);
-    }
-
-    // Check for Kafka/RabbitMQ badges
-    const brokerBadges = await page.locator('[class*="badge"]').count();
-    console.log(`  Broker badges: ${brokerBadges}`);
-  });
-
-  test('Phase 11: Check Code tab', async () => {
-    if (!jobId) {
-      console.log('⊘ Skipping: jobId not set');
-      return;
-    }
-
-    await page.goto(`${BASE_URL}/jobs/${jobId}/studio`);
-    await page.click('button:has-text("Code")');
-    await page.waitForTimeout(2000);
-
-    // Check for service selector
-    const serviceButtons = await page.locator('button[class*="service"]').count();
-    if (serviceButtons > 0) {
-      console.log(`✓ Phase 11: Code tab - ${serviceButtons} services available`);
-
-      // Click first service
-      await page.locator('button[class*="service"]').first().click();
-      await page.waitForTimeout(1000);
-
-      // Check file explorer
-      const fileTree = await page.locator('[class*="tree"], [class*="explorer"]').isVisible();
-      console.log(`  File explorer: ${fileTree ? '✓' : '✗'}`);
-    }
-  });
-
-  test('Phase 12: Check Review tab', async () => {
-    if (!jobId) {
-      console.log('⊘ Skipping: jobId not set');
-      return;
-    }
-
-    await page.goto(`${BASE_URL}/jobs/${jobId}/studio`);
-    await page.click('button:has-text("Review")');
-    await page.waitForTimeout(2000);
-
-    // Check review report
-    const approvedBadge = await page.locator('text=APPROVED, text=Approved').first().isVisible();
-    if (approvedBadge) {
-      console.log('✓ Phase 12: Review tab - Services approved');
-    }
-
-    // Check findings
-    const findings = await page.locator('[class*="finding"]').count();
-    console.log(`  Findings count: ${findings}`);
-  });
-
-  // ============= Phase 13: Return to Jobs & Verify Status =============
-  test('Phase 13: Verify job status updated to completed', async () => {
-    await page.goto(`${BASE_URL}/jobs`);
-
-    // Check for completed jobs section
-    const completedSection = await page.locator('text=Completed').isVisible();
-    if (completedSection) {
-      console.log('✓ Phase 13: Job moved to Completed section');
-    } else {
-      console.log('✗ Phase 13: Job still in Running section');
-    }
-  });
-
-  // ============= Phase 14: End-to-End Flow Verification =============
-  test('Phase 14: Verify all data persists', async () => {
-    if (!jobId) {
-      console.log('⊘ Skipping: jobId not set');
-      return;
-    }
-
-    // Check API endpoints
-    const endpoints = [
-      `/api/results/${jobId}`,
-      `/api/results/${jobId}/analysis`,
-      `/api/codegen/${jobId}/status`,
-      `/api/codegen/${jobId}/architecture`,
-      `/api/codegen/${jobId}/plan`,
-      `/api/codegen/${jobId}/review`
-    ];
-
-    for (const endpoint of endpoints) {
-      const response = await page.request.get(`${API_BASE}${endpoint}`);
-      const status = response.status();
-      console.log(`${status === 200 ? '✓' : '✗'} ${endpoint} - ${status}`);
-    }
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('emip-demo', 'true');
+    localStorage.setItem('emip-sidebar', 'false');
   });
 });
 
-test.describe('UI & Performance Tests', () => {
-  test('Check page load times', async ({ page }) => {
-    const startTime = Date.now();
-    await page.goto(BASE_URL);
-    const loadTime = Date.now() - startTime;
-
-    console.log(`Dashboard load: ${loadTime}ms ${loadTime < 3000 ? '✓' : '⚠'}`);
+test.describe('Demo-mode smoke walkthrough', () => {
+  test('Dashboard renders with the honest demo banner', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page.locator('main').getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.getByText(/Demo Mode is on/)).toBeVisible();
   });
 
-  test('Check responsive design', async ({ page }) => {
-    // Test mobile
-    await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto(BASE_URL);
-
-    const hamburger = await page.locator('[class*="menu"], [class*="hamburger"]').isVisible();
-    console.log(`Mobile menu: ${hamburger ? '✓' : '⚠'}`);
+  test('Sidebar "Analyze Code" navigates to the upload page', async ({ page }) => {
+    await page.goto('/dashboard');
+    await page.locator('aside').getByRole('link', { name: 'Analyze Code' }).click();
+    await expect(page).toHaveURL(/\/upload$/);
+    await expect(
+      page.getByRole('heading', { name: 'Start a Modernization Assessment' })
+    ).toBeVisible();
   });
 
-  test('Check for console errors', async ({ page }) => {
+  test('Upload page renders a real file picker', async ({ page }) => {
+    await page.goto('/upload');
+    await expect(page.getByRole('heading', { name: 'Start a Modernization Assessment' })).toBeVisible();
+    // The native input is intentionally hidden; the visible drop zone is the picker surface.
+    await expect(page.getByRole('button', { name: 'Drop zone for ZIP files' })).toBeVisible();
+    await expect(page.locator('input[type="file"][accept=".zip"]')).toBeAttached();
+  });
+
+  test('Upload: a valid ZIP passes client validation and shows the project form', async ({ page }) => {
+    await page.goto('/upload');
+    await page.setInputFiles('input[type="file"]', {
+      name: 'demo-project.zip',
+      mimeType: 'application/zip',
+      buffer: zipBuffer(),
+    });
+    await expect(page.getByRole('button', { name: /Start Upload & Analysis/ })).toBeVisible();
+  });
+
+  test('Upload: a non-ZIP file is rejected with a clear error', async ({ page }) => {
+    await page.goto('/upload');
+    await page.setInputFiles('input[type="file"]', {
+      name: 'readme.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from('not a zip'),
+    });
+    await expect(page.getByText('Only .zip files are supported')).toBeVisible();
+  });
+
+  test('Upload with no backend fails honestly instead of faking success', async ({ page }) => {
+    await page.goto('/upload');
+    await page.setInputFiles('input[type="file"]', {
+      name: 'demo-project.zip',
+      mimeType: 'application/zip',
+      buffer: zipBuffer(),
+    });
+    await page.getByRole('button', { name: /Start Upload & Analysis/ }).click();
+    await expect(
+      page.getByText(/Network Error|Upload Failed|Service Unavailable/)
+    ).toBeVisible({ timeout: 15000 });
+  });
+
+  test('Jobs page shows sample jobs with the demo banner', async ({ page }) => {
+    await page.goto('/jobs');
+    await expect(page.locator('main').getByRole('heading', { name: 'Jobs', exact: true })).toBeVisible();
+    await expect(page.getByText(/Running Jobs/)).toBeVisible();
+    await expect(page.getByText('Banking Core').first()).toBeVisible();
+    await expect(page.getByText(/Demo Mode is on/)).toBeVisible();
+  });
+
+  test('Results page renders the full sample analysis', async ({ page }) => {
+    await page.goto(`/jobs/${DEMO_JOB_ID}/results`);
+    await expect(
+      page.getByRole('heading', { name: 'Enterprise Modernization Intelligence' })
+    ).toBeVisible();
+    await expect(page.getByText(/Demo Mode is on/)).toBeVisible();
+    await expect(page.getByText('Readiness Assessment').first()).toBeVisible();
+    await expect(page.getByText('Architecture Intelligence').first()).toBeVisible();
+    await expect(page.getByText(/Analysis Complete/).first()).toBeVisible();
+  });
+
+  test('Migration Planner renders', async ({ page }) => {
+    await page.goto('/migration');
+    await expect(page.locator('main').getByRole('heading', { name: 'Migration Planner' })).toBeVisible();
+  });
+
+  test('Reports page renders', async ({ page }) => {
+    await page.goto('/reports');
+    await expect(page.locator('main').getByRole('heading', { name: 'Reports' })).toBeVisible();
+  });
+
+  test('Modernization Studio renders', async ({ page }) => {
+    await page.goto('/studio');
+    await expect(page.locator('main').getByRole('heading', { name: 'Modernization Studio' })).toBeVisible();
+  });
+
+  test('Architecture page renders', async ({ page }) => {
+    await page.goto('/architecture');
+    await expect(page.locator('main').getByRole('heading', { name: 'Architecture' })).toBeVisible();
+  });
+
+  test('Core demo walkthrough produces no console errors', async ({ page }) => {
     const errors: string[] = [];
-    page.on('console', msg => {
-      if (msg.type() === 'error') {
-        errors.push(msg.text());
-      }
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') errors.push(msg.text());
     });
 
-    await page.goto(BASE_URL);
-    await page.click('text=Jobs');
+    await page.goto('/dashboard');
+    await page.goto('/upload');
+    await page.goto('/jobs');
+    await page.goto(`/jobs/${DEMO_JOB_ID}/results`);
+    await page.waitForLoadState('networkidle');
 
-    if (errors.length === 0) {
-      console.log('✓ No console errors');
-    } else {
-      console.log(`✗ Console errors: ${errors.length}`);
-      errors.forEach(e => console.log(`  - ${e}`));
-    }
+    expect(errors, `Console errors:\n${errors.join('\n')}`).toEqual([]);
   });
 });

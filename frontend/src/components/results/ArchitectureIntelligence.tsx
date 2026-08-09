@@ -4,12 +4,13 @@ import { HealthCard } from '@/components/cards/HealthCard';
 import { ReadinessBadge, RiskBadge } from '@/components/cards';
 import type { AnalysisResult } from '@/types/api';
 import type { HealthMetric } from '@/types/dashboard';
+import type { GodClassMetric, CircularDependencyMetric, DeadCodeMetric } from '@/types/metrics';
 import { getScore, getHealthStatus } from '@/utils/formatters';
 
 function computeHealthMetrics(analysis: AnalysisResult): HealthMetric[] {
-  const godClasses = (analysis.metrics?.god_classes || []) as any[];
-  const circularDeps = (analysis.metrics?.circular_dependencies || []) as any[];
-  const deadCode = (analysis.metrics?.dead_code || []) as any[];
+  const godClasses = (analysis.metrics?.god_classes || []) as GodClassMetric[];
+  const circularDeps = (analysis.metrics?.circular_dependencies || []) as CircularDependencyMetric[];
+  const deadCode = (analysis.metrics?.dead_code || []) as DeadCodeMetric[];
   const services = analysis.service_boundaries || [];
   const totalClasses = (analysis.metrics?.total_classes as number) || 0;
   const avgCohesion = services.length > 0

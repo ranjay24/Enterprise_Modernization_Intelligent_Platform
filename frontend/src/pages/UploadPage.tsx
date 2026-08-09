@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, History, ArrowRight, Inbox, FileCheck, Clock, Target } from 'lucide-react';
+import { Upload, History, ArrowRight, Inbox, FileCheck, Clock, Target, FlaskConical } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUploadFlow } from '@/hooks/useUploadFlow';
 import { UploadZone } from '@/components/upload/UploadZone';
@@ -197,7 +197,13 @@ export default function UploadPage() {
             className="overflow-hidden"
           >
             {demoMode ? (
-              <HistoryTable data={mockUploadHistory} />
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <FlaskConical className="w-3.5 h-3.5 text-warning" />
+                  Demo Mode is on — this history is sample data.
+                </p>
+                <HistoryTable data={mockUploadHistory} />
+              </div>
             ) : (
               <div className="border rounded-xl bg-card p-12 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">

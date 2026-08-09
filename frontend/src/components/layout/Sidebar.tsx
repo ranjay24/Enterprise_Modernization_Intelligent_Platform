@@ -14,7 +14,6 @@ import {
   Layers,
   Code2,
   Bell,
-  Clock,
   Sparkles,
   User,
   ChevronDown,
@@ -174,28 +173,10 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* ── Recent analyses section ── */}
-        {!sidebarCollapsed && (
-          <div className="px-3 py-2 border-t border-[var(--border-subtle)]">
-            <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-2">Recent</p>
-            <div className="space-y-1">
-              {['E-Commerce Monolith', 'Banking Platform'].map((name) => (
-                <button
-                  key={name}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-[var(--text-muted)] hover:bg-[var(--sidebar-hover)] hover:text-[var(--text-primary)] transition-colors text-left"
-                >
-                  <Clock className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* ── User section ── */}
         {!sidebarCollapsed && (
           <div className="px-3 py-2 border-t border-[var(--border-subtle)]">
-            <button className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg hover:bg-[var(--sidebar-hover)] transition-colors">
+            <button disabled title="Account settings coming soon" className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg hover:bg-[var(--sidebar-hover)] transition-colors disabled:cursor-not-allowed">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-white text-xs font-bold">
                 JD
               </div>

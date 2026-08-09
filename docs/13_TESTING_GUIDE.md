@@ -135,7 +135,7 @@ python -m pytest tests/ -n 4 -v
 The `test_sprint5_6_benchmark.py` suite validates the benchmark infrastructure:
 
 - **Profile construction** — BENCHMARK profile scales limits based on model capabilities.
-- **Model auto-detection** — Nova Pro, Claude Sonnet, Mistral, and Llama models are detected correctly.
+- **Model capability auto-detection** — Nova, Claude Sonnet, Mistral, and Llama capability metadata is detected correctly (profile scaling; only Nova is runtime-wired).
 - **Cache behavior** — Profile is cached per model ID; different models get different profiles.
 - **Field completeness** — Every profile field is populated with sensible values.
 - **Fallback behavior** — Unknown models get conservative defaults.

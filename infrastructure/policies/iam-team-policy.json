@@ -12,8 +12,8 @@
         "s3:GetBucketLocation"
       ],
       "Resource": [
-        "arn:aws:s3:::emip-artifacts-479752407378",
-        "arn:aws:s3:::emip-artifacts-479752407378/*"
+        "arn:aws:s3:::emip-artifacts-dev-479752407378",
+        "arn:aws:s3:::emip-artifacts-dev-479752407378/*"
       ]
     },
     {
@@ -28,10 +28,10 @@
         "dynamodb:Scan"
       ],
       "Resource": [
-        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-jobs",
-        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-jobs/index/*",
-        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-analysis",
-        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-analysis/index/*"
+        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-jobs-dev",
+        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-jobs-dev/index/*",
+        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-analysis-dev",
+        "arn:aws:dynamodb:us-east-1:479752407378:table/emip-analysis-dev/index/*"
       ]
     },
     {
@@ -73,7 +73,11 @@
         "bedrock:InvokeModelWithResponseStream",
         "bedrock:Converse"
       ],
-      "Resource": "*"
+      "Resource": [
+        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-pro-v1:0",
+        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0",
+        "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0"
+      ]
     },
     {
       "Sid": "STSAccess",
@@ -99,6 +103,14 @@
       "Effect": "Allow",
       "Action": [
         "cloudwatch:PutMetricData"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "PricingLookup",
+      "Effect": "Allow",
+      "Action": [
+        "pricing:GetProducts"
       ],
       "Resource": "*"
     }

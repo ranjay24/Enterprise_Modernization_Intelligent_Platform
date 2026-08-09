@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from dataclasses import dataclass, field
@@ -23,6 +24,22 @@ DTO_PACKAGES = {"dto", "model", "request", "response", "command", "query"}
 EXCEPTION_SUFFIXES = ("Exception", "Error", "Exceptions")
 CONFIG_ANNOTATIONS = {"Configuration", "SpringBootApplication", "EnableAutoConfiguration"}
 
+# Cyclomatic complexity decision points. Ternary and generic wildcard `?` are
+# excluded to avoid false positives from type parameters like `List<? extends T>`.
+_DECISION_PATTERN = re.compile(r"\b(?:if|for|while|case|catch|else)\b|&&|\|\|")
+_WHITESPACE_PATTERN = re.compile(r"\s+")
+
+
+def _cyclomatic_complexity(body: str) -> int:
+    """Estimate cyclomatic complexity of a method body: 1 + decision points."""
+    return 1 + len(_DECISION_PATTERN.findall(body))
+
+
+def _body_hash(body: str) -> str:
+    """Whitespace-normalized hash of a method body for duplication detection."""
+    normalized = _WHITESPACE_PATTERN.sub("", body)
+    return hashlib.md5(normalized.encode("utf-8")).hexdigest()
+
 
 @dataclass
 class ParsedClass:
@@ -33,6 +50,7 @@ class ParsedClass:
     lines_of_code: int = 0
     method_count: int = 0
     method_lines: list = field(default_factory=list)
+    method_complexities: list[int] = field(default_factory=list)
     annotations: list[str] = field(default_factory=list)
     imports: list[str] = field(default_factory=list)
     extends: str = ""
@@ -192,19 +210,30 @@ class JavaParser(Analyzer):
         for ann_m in re.finditer(r"@(\w+)\s*\(([^)]*)\)", content):
             annotations_with_params[ann_m.group(1)] = ann_m.group(2).strip()
 
-        methods = re.findall(
+        method_regex = re.compile(
             r"(?:public|protected|private|static|final|synchronized|abstract|native)\s+"
-            r"(?:[\w<>\[\],\s?]+)\s+(\w+)\s*\([^)]*\)",
-            content,
+            r"(?:[\w<>\[\],\s?]+)\s+(\w+)\s*\([^)]*\)"
         )
-
+        method_matches = list(method_regex.finditer(content))
+        methods = [m.group(1) for m in method_matches]
         method_lines = []
-        for m in methods:
-            pattern = rf"(?:public|protected|private|static|final|synchronized|abstract|native)\s+(?:[\w<>\[\],\s?]+)\s+{re.escape(m)}\s*\([^)]*\)"
-            match = re.search(pattern, content)
-            if match:
-                start_line = content[:match.start()].count("\n") + 1
-                method_lines.append({"name": m, "start_line": start_line})
+        method_complexities = []
+        source_lines = content.split("\n")
+        for i, m in enumerate(method_matches):
+            start_line = content[:m.start()].count("\n") + 1
+            end_line = (
+                content[:method_matches[i + 1].start()].count("\n") + 1
+                if i + 1 < len(method_matches)
+                else len(source_lines) + 1
+            )
+            body = "\n".join(source_lines[start_line - 1:end_line - 1])
+            method_lines.append({
+                "name": m.group(1),
+                "start_line": start_line,
+                "end_line": end_line,
+                "body_hash": _body_hash(body),
+            })
+            method_complexities.append(_cyclomatic_complexity(body))
 
         injected_fields = []
         field_deps = []
@@ -263,7 +292,8 @@ class JavaParser(Analyzer):
             file_path=os.path.relpath(file_path, base_path),
             class_type=class_type.lower(),
             lines_of_code=loc, method_count=len(methods),
-            method_lines=method_lines, annotations=annotations,
+            method_lines=method_lines, method_complexities=method_complexities,
+            annotations=annotations,
             imports=imports, extends=extends, implements=implements,
             dependencies=deps, fields=field_deps,
             injected_fields=injected_fields,

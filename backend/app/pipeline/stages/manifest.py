@@ -35,8 +35,6 @@ class ManifestStage(PipelineStage):
 
         # Collect all artifact metadata
         artifact_metadata = []
-        total_tokens = 0
-        total_cost = 0.0
         degraded_stages = []
 
         for stage_name, stage_state in context.state.stages.items():
@@ -44,10 +42,16 @@ class ManifestStage(PipelineStage):
                 artifact = context.results.get(stage_name)
                 if artifact:
                     artifact_metadata.append(artifact.metadata)
-                    total_tokens += stage_state.tokens_used
-                    total_cost += stage_state.cost_estimate
                 if stage_state.is_degraded:
                     degraded_stages.append(stage_name)
+
+        usage = {"total_cost": 0.0, "total_input_tokens": 0, "total_output_tokens": 0, "invocations": 0}
+        try:
+            from app.ai.service import get_ai_engine
+
+            usage = get_ai_engine().provider_registry.cost_tracker.get_job_usage(context.job_id)
+        except Exception as exc:
+            logger.warning("manifest_cost_tracker_unavailable", job_id=context.job_id, error=str(exc))
 
         # Get project name from enterprise_analysis results
         sprint2 = context.get_result_data("enterprise_analysis")
@@ -66,8 +70,8 @@ class ManifestStage(PipelineStage):
             reports=[],
             pipeline_state=context.state.to_dict(),
             ai_summary={
-                "total_tokens_used": total_tokens,
-                "total_cost_estimate": total_cost,
+                "total_tokens_used": usage["total_input_tokens"] + usage["total_output_tokens"],
+                "total_cost_estimate": round(usage["total_cost"], 6),
                 "deterministic_fallbacks": len(degraded_stages),
                 "degraded_stages": degraded_stages,
             },

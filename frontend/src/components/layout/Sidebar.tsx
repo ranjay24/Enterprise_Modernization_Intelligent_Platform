@@ -15,14 +15,13 @@ import {
   Code2,
   Bell,
   Sparkles,
-  User,
-  ChevronDown,
   Wand2,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAppStore } from '@/store/useAppStore';
 import { useState } from 'react';
 import { Input } from '@/components/ui/Input';
+import { UserChip } from '@/components/layout/UserChip';
 
 interface NavGroup {
   label: string;
@@ -176,16 +175,7 @@ export function Sidebar() {
         {/* ── User section ── */}
         {!sidebarCollapsed && (
           <div className="px-3 py-2 border-t border-[var(--border-subtle)]">
-            <button disabled title="Account settings coming soon" className="flex items-center gap-2.5 w-full px-2 py-1.5 rounded-lg hover:bg-[var(--sidebar-hover)] transition-colors disabled:cursor-not-allowed">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[var(--accent-blue)] to-[var(--accent-purple)] flex items-center justify-center text-white text-xs font-bold">
-                JD
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-xs font-medium text-[var(--text-primary)] truncate">John Doe</p>
-                <p className="text-[10px] text-[var(--text-muted)] truncate">Enterprise Plan</p>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
-            </button>
+            <UserChip />
           </div>
         )}
 

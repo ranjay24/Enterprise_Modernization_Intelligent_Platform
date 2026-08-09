@@ -161,9 +161,10 @@ The static analyzer in `backend/app/services/static_analyzer.py` uses **regex-ba
 
 ### Authentication
 
-- **Single-user system** — no multi-tenant support, no user management, no role-based access control.
-- Authentication is limited to a static API key (`X-API-Key` header) configured via environment variable.
-- No OAuth, no SSO, no JWT-based authentication.
+- **Single-user system** — no multi-tenant support, no role-based access control.
+- Production auth is Cognito (opt-in via `EMIP_COGNITO_ENABLED`). When Cognito is not configured, a **built-in local auth provider** (default on) provides real signup/login/confirm/refresh with HMAC-signed JWT-style tokens, PBKDF2 password hashing, and users persisted to `backend/data/users.json`. It is a dev/self-hosted fallback — disable with `EMIP_LOCAL_AUTH_ENABLED=false`.
+- A static API key (`X-API-Key` header) is still supported in parallel; either credential is sufficient.
+- No SSO, no multi-factor authentication.
 
 ### Language Support
 

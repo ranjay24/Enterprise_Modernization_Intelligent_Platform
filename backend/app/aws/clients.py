@@ -22,6 +22,7 @@ class AWSClients:
         self._sts_client = None
         self._events_client = None
         self._pricing_client = None
+        self._cognito_idp_client = None
 
     @property
     def sts(self):
@@ -118,6 +119,15 @@ class AWSClients:
         return self._pricing_client
 
     @property
+    def cognito_idp(self):
+        if self._cognito_idp_client is None:
+            self._cognito_idp_client = boto3.client(
+                "cognito-idp",
+                region_name=self._settings.aws_region,
+            )
+        return self._cognito_idp_client
+
+    @property
     def s3_bucket_name(self) -> str:
         return self._settings.s3_bucket
 
@@ -140,3 +150,4 @@ class AWSClients:
         self._cloudwatch_client = None
         self._events_client = None
         self._pricing_client = None
+        self._cognito_idp_client = None

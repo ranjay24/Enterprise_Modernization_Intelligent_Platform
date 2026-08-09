@@ -27,6 +27,10 @@ Globals:
         ARTIFACT_VERSION: "1.0.0"
         CORS_ORIGINS: !Ref CorsOrigins
         EMIP_API_KEY: !Ref ApiKey
+        EMIP_COGNITO_ENABLED: !If [CognitoConfigured, "true", "false"]
+        EMIP_COGNITO_USER_POOL_ID: !If [CreateCognitoPoolConfigured, !Ref EmipUserPool, !Ref CognitoUserPoolId]
+        EMIP_COGNITO_REGION: !Ref CognitoRegion
+        EMIP_COGNITO_CLIENT_ID: !If [CreateCognitoPoolConfigured, !Ref EmipUserPoolClient, !Ref CognitoClientId]
 
 Parameters:
   Environment:
@@ -57,6 +61,27 @@ Parameters:
     Type: String
     Default: ""
     Description: Email address for pipeline notification subscriptions (empty = no subscription)
+  CreateCognitoPool:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Create a Cognito user pool + app client for authentication (empty = auth disabled)
+  CognitoUserPoolId:
+    Type: String
+    Default: ""
+    Description: Existing Cognito user pool ID (used when CreateCognitoPool=false and auth is desired)
+  CognitoClientId:
+    Type: String
+    Default: ""
+    Description: Existing Cognito app client ID (used when CreateCognitoPool=false)
+  CognitoRegion:
+    Type: String
+    Default: us-east-1
+    Description: Region hosting the Cognito user pool
+  CognitoDomainPrefix:
+    Type: String
+    Default: ""
+    Description: Prefix for the Cognito hosted-UI domain (empty = no domain created)
 
 Conditions:
   ApiKeyNotConfigured: !Equals [!Ref ApiKey, ""]
@@ -65,6 +90,14 @@ Conditions:
   NotificationEmailNotConfigured: !Equals [!Ref NotificationEmail, ""]
   NotificationEmailConfigured: !Not
     - Condition: NotificationEmailNotConfigured
+  CreateCognitoPoolConfigured: !Equals [!Ref CreateCognitoPool, "true"]
+  CognitoPoolProvided: !Not
+    - Condition: !Equals [!Ref CognitoUserPoolId, ""]
+  CognitoConfigured: !Or
+    - Condition: CreateCognitoPoolConfigured
+    - Condition: CognitoPoolProvided
+  CognitoDomainConfigured: !Not
+    - Condition: !Equals [!Ref CognitoDomainPrefix, ""]
 
 Resources:
   # --- API Gateway ---
@@ -272,6 +305,51 @@ Resources:
       TopicArn: !Ref NotificationTopic
       Protocol: email
       Endpoint: !Ref NotificationEmail
+
+  # --- Cognito user pool + app client (only when CreateCognitoPool=true) ---
+  EmipUserPool:
+    Type: AWS::Cognito::UserPool
+    Condition: CreateCognitoPoolConfigured
+    Properties:
+      UserPoolName: !Sub "emip-users-${Environment}"
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: false
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+
+  EmipUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Condition: CreateCognitoPoolConfigured
+    Properties:
+      ClientName: !Sub "emip-app-${Environment}"
+      UserPoolId: !Ref EmipUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+
+  EmipUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Condition: CognitoDomainConfigured
+    Properties:
+      Domain: !Ref CognitoDomainPrefix
+      UserPoolId: !If [CreateCognitoPoolConfigured, !Ref EmipUserPool, !Ref CognitoUserPoolId]
 
   # --- CloudWatch Log Groups ---
   BackendLogGroup:
@@ -512,3 +590,9 @@ Outputs:
   NotificationTopicArn:
     Description: SNS notification topic ARN
     Value: !Ref NotificationTopic
+  CognitoUserPoolId:
+    Description: Cognito user pool ID (created or provided)
+    Value: !If [CreateCognitoPoolConfigured, !Ref EmipUserPool, !Ref CognitoUserPoolId]
+  CognitoClientId:
+    Description: Cognito app client ID (created or provided)
+    Value: !If [CreateCognitoPoolConfigured, !Ref EmipUserPoolClient, !Ref CognitoClientId]

@@ -117,8 +117,11 @@ setup (#48).
 
 ## Platform scope
 
-- Single-user, no multi-tenant, no RBAC, no OAuth/SSO. Optional static API key
-  only.
+- Single-user, no multi-tenant, no RBAC, no SSO/MFA. Auth is Cognito when
+  `EMIP_COGNITO_ENABLED=true`, otherwise the built-in local auth provider (real
+  signup/login/refresh, HMAC-signed tokens, users in `backend/data/users.json`);
+  a static `X-API-Key` is still accepted in parallel. When every provider is off,
+  auth endpoints return 503 and the app runs in guest mode.
 - Knowledge base directory exists but is **empty** — no RAG, no fine-tuning.
 - Reports are structured JSON artifacts; no rendered PDF/HTML/DOCX.
 - No model-parameter tuning UI; all AI tuning is via `AnalysisProfile`.

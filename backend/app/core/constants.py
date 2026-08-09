@@ -43,3 +43,11 @@ ANALYSIS_PHASES = [
 ]
 
 HEALTH_CHECK_PATHS = {"/health", "/api/health", "/docs", "/openapi.json", "/redoc"}
+
+# Unauthenticated Cognito auth endpoints (reachable before a token exists)
+AUTH_PUBLIC_PATHS = {
+    "/api/auth/login",
+    "/api/auth/signup",
+    "/api/auth/confirm",
+    "/api/auth/refresh",
+}

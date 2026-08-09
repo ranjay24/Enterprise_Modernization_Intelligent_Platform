@@ -7,8 +7,9 @@ import { test, expect } from '@playwright/test';
 // The walkthrough mirrors the demo product flow: dashboard → upload (real ZIP
 // validation) → jobs (sample analyses) → results (full sample report).
 //
-// Demo mode is enabled per-page via localStorage before app boot, matching
-// useAppStore.getInitialDemoMode().
+// Demo mode is enabled per-page before app boot via sessionStorage (emip-demo),
+// matching useAppStore.getInitialDemoMode(). The sidebar preference stays in
+// localStorage (emip-sidebar).
 
 const DEMO_JOB_ID = 'job-bank-003';
 
@@ -19,7 +20,7 @@ function zipBuffer(): Buffer {
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('emip-demo', 'true');
+    sessionStorage.setItem('emip-demo', 'true');
     localStorage.setItem('emip-sidebar', 'false');
   });
 });
@@ -69,6 +70,9 @@ test.describe('Demo-mode smoke walkthrough', () => {
   });
 
   test('Upload with no backend fails honestly instead of faking success', async ({ page }) => {
+    // Force a network failure for the upload call so the test is deterministic
+    // even when a live backend happens to be running.
+    await page.route('**/api/upload', (route) => route.abort());
     await page.goto('/upload');
     await page.setInputFiles('input[type="file"]', {
       name: 'demo-project.zip',
@@ -77,7 +81,7 @@ test.describe('Demo-mode smoke walkthrough', () => {
     });
     await page.getByRole('button', { name: /Start Upload & Analysis/ }).click();
     await expect(
-      page.getByText(/Network Error|Upload Failed|Service Unavailable/)
+      page.getByText(/Network Error|Upload Failed|Service Unavailable/).first()
     ).toBeVisible({ timeout: 15000 });
   });
 

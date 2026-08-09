@@ -62,7 +62,11 @@ class TestCorsOriginsParsing:
 def _patch_settings(monkeypatch):
     """Fixture factory — call _patch_settings(api_key=...) to set the value."""
     def _set(api_key: str):
-        monkeypatch.setattr(security_mod, "get_settings", lambda: Settings(_env_file=None, api_key=api_key))
+        monkeypatch.setattr(
+            security_mod,
+            "get_settings",
+            lambda: Settings(_env_file=None, api_key=api_key, local_auth_enabled=False),
+        )
     return _set
 
 

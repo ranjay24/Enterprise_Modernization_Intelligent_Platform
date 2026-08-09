@@ -37,6 +37,47 @@
 | Correctness Plan — Phase 8 Documentation Honesty (P8.1–P8.5) | Abhijeet | 2026-08-08 | docs/19_CORRECTNESS_PLAN.md |
 | External 47-item review — Security & Correctness (P0/P1, 18 items) | Abhijeet | 2026-08-09 | docs/19_CORRECTNESS_PLAN.md (Phase 9) |
 | CodeGen Fix — monotonic progress + review status UX | Abhijeet | 2026-08-09 | docs/19_CORRECTNESS_PLAN.md |
+| Cognito authentication (backend: middleware, /auth routes, SAM pool) | Abhijeet | 2026-08-09 | specs/18-cognito-auth.md |
+| Cognito authentication (frontend: login/signup pages, demo bypass, notifications) | Abhijeet | 2026-08-09 | specs/18-cognito-auth.md |
+| Auth UX polish — animated showcase, split layout, session-scoped demo | Abhijeet | 2026-08-09 | specs/18-cognito-auth.md |
+| Real signup — built-in local auth provider + showcase story (drop→scan→yay→AWS→web) | Abhijeet | 2026-08-09 | specs/18-cognito-auth.md |
+
+## Real Signup — Local Auth Provider (2026-08-09)
+Backend suite **463 passed**; `npm run build` green; live e2e verified on :8000 (signup → code → confirm → login → `/me` with token). Uncommitted, per project rules.
+- **`app/core/local_auth.py` (new)**: full local auth provider when Cognito is unset — users persisted to `backend/data/users.json` (gitignored), PBKDF2-HMAC-SHA256 passwords, HMAC-SHA256 signed access/refresh tokens, 6-digit verification codes. Stdlib-only.
+- **`app/routes/auth.py`**: shared contract across two providers — Cognito (production) or local (default when Cognito off). Same endpoints/responses; `signup` adds optional `verification_code` (dev hint only, never on Cognito). `login`/`refresh` now convert `LocalAuthError` → proper 4xx (was 500).
+- **`app/core/security.py`**: middleware validates local bearer tokens when Cognito is off; auth is now enforced by default (was permissive), so `/me` returns 401 → frontend shows the real login gate.
+- **Settings**: `EMIP_LOCAL_AUTH_ENABLED` (default true), `EMIP_LOCAL_AUTH_SECRET`, `EMIP_LOCAL_AUTH_DATA_DIR`, `EMIP_LOCAL_AUTH_TOKEN_TTL`.
+- **Tests**: `test_auth_local.py` (16) — signup/confirm/login/refresh/me happy path, 401/403/409/400 paths, tampered-token rejection, 503 when every provider disabled. 3 existing tests updated for the new default.
+- **Frontend**: signup result carries `verification_code`; SignupPage verify stage shows a "Development mode" code hint; SignupPage/LoginPage use the new showcase.
+
+## Auth Showcase — Story Rebuild (2026-08-09)
+`npm run build` green. Replaced the 4-scene autoplay with a 5-scene narrative on the left panel, faster cycle (~14s vs ~20s):
+drop (ZIP falls like a stone, thuds, dust shadow) → scan (spinning radar + scanning code lines + % count-up) → generated ("Yay! Microservices generated" + confetti burst + service chips) → AWS (Lambda/API Gateway/S3/DynamoDB/SQS/EventBridge tiles) → web (animated SVG service web — 9 nodes, 16 edges draw in with flowing data packets). New keyframes: `drop`, `scan-sweep`, `spin-slow`, `dash-in`, `dash-flow`, `burst`, `ring`, `thud`. Per-scene timing (2400–3600ms), clickable dots, Upload→Analyze→Generate→Migrate stepper.
+
+## Auth UX Polish — Animated Showcase + Session-Scoped Demo (2026-08-09)
+`npm run build` green; live dev server (5173) + backend (8000) verified; all changed modules transform 200 on the running dev server. Uncommitted, per project rules.
+- **New `frontend/src/components/auth/AuthShowcase.tsx`**: animated left panel for login/signup — 4 auto-rotating scenes (ZIP upload with progress bar, service-boundary tiles with pop-in + count-up, cloud microservices with orbiting nodes, phased migration waves), Upload→Analyze→Migrate stepper, clickable scene dots, ambient glows + dot-grid overlay. Uses new `float`/`float-slow`/`pop`/`draw-x`/`progress-fill` keyframes + `animate-*` utilities added to `tailwind.config.js`.
+- **LoginPage/SignupPage**: now a two-column split layout — showcase left (hidden below `lg`), centered form card right with dot-grid backdrop; welcome-back heading, forgot-password hint, animated error/success alerts (`scale-in`), pinging success checkmark on account confirmation; compact brand block above the card on mobile.
+- **Demo mode is now session-scoped**: `useAppStore.ts` demo flag persisted in `sessionStorage` (was `localStorage`) — demo mode no longer survives browser restart, only the current tab session. Theme + sidebar prefs remain `localStorage`. Tokens (`emip-tokens`) already session-only in `auth/storage.ts`.
+
+## Cognito Authentication — Backend + SAM (2026-08-09)
+- **Settings** (`app/core/settings.py`): `cognito_enabled`, `cognito_user_pool_id`, `cognito_region`, `cognito_client_id` — bound to `EMIP_COGNITO_*` env via `AliasChoices` (default off, non-breaking).
+- **Middleware** (`app/core/security.py`): `APIKeyMiddleware` extended with a Cognito branch — validates `Authorization: Bearer <access token>` against the pool via `cognito-idp get_user` (user-scoped, rejects expired/invalid); returns 401 on missing/invalid; bypasses when `cognito_enabled=false`; `/api/health` + `/api/auth/*` stay public; API-key auth still works in parallel.
+- **Auth routes** (`app/routes/auth.py`): `POST /api/auth/login` (USER_PASSWORD_AUTH → tokens), `/signup` (self-service with `UserPoolClient`), `/confirm` (sign-up code), `/refresh`, `/me` (returns `request.state.user`, **503** when Cognito isn't configured so the frontend can probe). All auth routes return 503 when Cognito is disabled.
+- **AWS clients** (`app/aws/clients.py`): lazy `cognito-idp` client.
+- **SAM** (`infrastructure/template.yaml`): `EmipUserPool`/`EmipUserPoolClient` (no secret → USER_PASSWORD_AUTH)/`EmipUserPoolDomain`, all under `Condition: CreateCognitoPool` (new `CreateCognitoPool` param, default `false` → existing stacks unchanged); env vars wired into both Lambda functions; `CognitoUserPoolId`/`CognitoClientId`/`CognitoHostedUIDomain` outputs.
+- **Tests**: `backend/tests/test_auth_cognito.py` (22) — settings binding, middleware (valid/invalid/missing key, API-key coexistence, disabled permissive, health public), and all auth routes incl. `/me` 200/401/503 paths. Full backend suite **449 passed**.
+
+## Cognito Authentication — Frontend (2026-08-09)
+Frontend build green; backend suite **449 passed**; Playwright **18/18 passed** (13 existing demo walkthrough + 5 new auth-gate tests). Uncommitted, per project rules.
+- **Auth module** (`frontend/src/auth/`): `AuthContext.tsx` + `storage.ts` + `types.ts` — status machine (`loading | unauthenticated | authenticated | guest`). Bootstrap: demo flag → guest; stored tokens → `/api/auth/me` (401 → try-refresh path, cleared on failure; 503/network → guest); no tokens → probe `/me` (503/network → guest, 401 → login page). `login`/`signup`/`confirm`/`logout`/`continueAsGuest`; tokens persisted in `emip-tokens`.
+- **API client** (`frontend/src/services/api.ts`): request interceptor attaches `Authorization: Bearer <id_token>`; response interceptor preserves `error.status` and auto-clears the session + redirects to `/login` on a 401 from an authenticated call.
+- **Pages**: `LoginPage.tsx` (email/password sign-in, 503 → "continue without signing in" notice, demo-mode bypass button, signup link), `SignupPage.tsx` (self-service sign-up → email-verification code stage → success).
+- **Routing** (`App.tsx`): `/login` + `/signup` rendered outside `AppLayout`; `AuthProvider` wraps the app; gate redirects `unauthenticated` → `/login` (splash while bootstrapping) and `authenticated` → `/dashboard` off auth routes.
+- **Identity in UI**: `UserChip` in the Sidebar (real name/email + sign-out; "Guest · API-key session" otherwise) replaces the fabricated John Doe profile; `TopNav` shows name/email + sign-out; Settings gains an Account card.
+- **Notifications** (`frontend/src/hooks/useNotifications.ts` + TopNav): polls `/api/jobs` every 20s, emits on job transitions (started / complete / failed), capped list, unseen-count badge + pulsing bell dot, top-right slide-down toast on terminal events, `notifyRoute` deep-links to the job; demo mode seeds labeled sample notifications and skips polling (keeps the no-console-errors e2e green). New `slide-down` keyframe in `tailwind.config.js`.
+- **Backend contract tweak**: `GET /api/auth/me` now returns **503** (not 401) when Cognito is disabled — this is the frontend's "no login needed" probe signal.
 
 ## Results Accuracy Fix — Changes (2026-07-31)
 - **Parser/static analyzer flags**: `is_controller` excludes `@ControllerAdvice`; `is_repository` catches `extends CrudRepository` (and JPA/Paging/Mongo/Elasticsearch interfaces); `is_dto` excludes entities/repos/controllers/services; Lombok annotations recognized; `Exceptions` suffix no longer flagged as exception class.
@@ -170,3 +211,9 @@ Executed `docs/19_CORRECTNESS_PLAN.md` Phase 9. Every P0/P1 security and correct
 - **#23** `avg_cyclomatic_complexity` now counts real decision points; new `avg_method_length`; per-method `start_line`/`end_line`/`body_hash`. **#27** constructor regex scoped to the class body + requires `{` (no `new Foo(...)` false positives). **#28** duplication dedupes by `body_hash` (was always 0).
 - **Not reproduced / not fixed**: #12, #17, #44 (already guarded). **Partial**: #33 (3 files unreferenced; `graph_exporter.py` IS exported). **Deferred**: #9/#10/#22/#29/#31/#32/#34 (resilience), #33 removal, #6/#47 (frontend, latent), #48 (eslint).
 - **Tests**: new `backend/tests/test_code_review_fixes.py` (25 regression tests) + updated `tests/test_sprint4_1.py`/`tests/test_sprint5_parallel.py` (resume asserts CACHED). Docs updated: `docs/19_CORRECTNESS_PLAN.md` (Phase 9), root `KNOWN_LIMITATIONS.md`, `docs/15_KNOWN_LIMITATIONS.md` (Upload Security).
+
+## Email-login + e2e repair (2026-08-09)
+Local auth provider now resolves **email or username** for `signup`/`confirm`/`login` (`app/core/local_auth.py`), so signing up with `ran2492002@gmail.com` lets you log in with that email. Backend suite **465 passed** (was 463; `test_auth_local.py` +1), frontend `npm run build` green, e2e suite now **19 passed**.
+- Root cause of failing full-flow spec: demo mode was stored in `localStorage` while `main.tsx` read it from `sessionStorage` → mismatch. Fixed to `sessionStorage`, upload route now aborts cleanly when it redirects away, `StrictMode` double-mount is accounted for in specs.
+- Updated `tests/e2e/auth-gate.spec.ts` (6 passed): auth probe 503 → guest no-gate; 401 → redirect `/login`; `POST /login` happy path stores session + user chip; `/me` 200 → skip gate.
+- **Docs now honest**: `docs/06_API_REFERENCE.md` auth section (Cognito + local provider share the contract; 503 only when no provider configured), `docs/15_KNOWN_LIMITATIONS.md` + root `KNOWN_LIMITATIONS.md` (local-auth provider, PBKDF2, HMAC tokens, users in `backend/data/users.json`). Uncommitted, per project rules.

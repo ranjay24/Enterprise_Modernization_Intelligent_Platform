@@ -77,6 +77,55 @@ class Settings(BaseSettings):
         default=["http://localhost:5173", "http://localhost:3000"],
         description="Allowed CORS origins",
     )
+    # Cognito
+    cognito_enabled: bool = Field(
+        default=False,
+        description="Enable Cognito bearer-token authentication (default off)",
+        validation_alias=AliasChoices("EMIP_COGNITO_ENABLED", "COGNITO_ENABLED", "cognito_enabled"),
+    )
+    cognito_user_pool_id: str = Field(
+        default="",
+        description="Cognito user pool ID (required when cognito_enabled=true)",
+        validation_alias=AliasChoices(
+            "EMIP_COGNITO_USER_POOL_ID", "COGNITO_USER_POOL_ID", "cognito_user_pool_id"
+        ),
+    )
+    cognito_region: str = Field(
+        default="us-east-1",
+        description="Region hosting the Cognito user pool",
+        validation_alias=AliasChoices("EMIP_COGNITO_REGION", "COGNITO_REGION", "cognito_region"),
+    )
+    cognito_client_id: str = Field(
+        default="",
+        description="Cognito app client ID (required when cognito_enabled=true)",
+        validation_alias=AliasChoices("EMIP_COGNITO_CLIENT_ID", "COGNITO_CLIENT_ID", "cognito_client_id"),
+    )
+
+    # Local auth provider (fallback when Cognito is not configured)
+    local_auth_enabled: bool = Field(
+        default=True,
+        description=(
+            "Built-in local auth provider: signup/login/confirm/refresh/me work out of the box "
+            "when Cognito is not configured. Tokens are HMAC-signed and validated by the middleware. "
+            "Production should disable this and use Cognito."
+        ),
+        validation_alias=AliasChoices("EMIP_LOCAL_AUTH_ENABLED", "LOCAL_AUTH_ENABLED", "local_auth_enabled"),
+    )
+    local_auth_secret: str = Field(
+        default="emip-local-dev-secret-change-me",
+        description="HMAC signing secret for local auth tokens (dev-only; override in production)",
+        validation_alias=AliasChoices("EMIP_LOCAL_AUTH_SECRET", "LOCAL_AUTH_SECRET", "local_auth_secret"),
+    )
+    local_auth_data_dir: str = Field(
+        default="./data",
+        description="Directory holding the local auth user store (users.json). Persists across restarts in dev.",
+        validation_alias=AliasChoices("EMIP_LOCAL_AUTH_DATA_DIR", "LOCAL_AUTH_DATA_DIR", "local_auth_data_dir"),
+    )
+    local_auth_token_ttl: int = Field(
+        default=3600,
+        description="Local access-token lifetime in seconds",
+        validation_alias=AliasChoices("EMIP_LOCAL_AUTH_TOKEN_TTL", "LOCAL_AUTH_TOKEN_TTL", "local_auth_token_ttl"),
+    )
 
     @field_validator("cors_origins", mode="before")
     @classmethod

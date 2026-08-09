@@ -18,6 +18,44 @@ All requests require an API key passed via the `X-API-Key` header. Applied globa
 X-API-Key: <your-api-key>
 ```
 
+### Bearer tokens (Cognito or built-in local auth)
+
+Two bearer providers share the same `/api/auth/*` contract:
+
+- **Cognito** (production): when `EMIP_COGNITO_ENABLED=true`, the middleware validates a Cognito
+  **IdToken** (from `/api/auth/login`) in the `Authorization` header.
+- **Local auth provider** (dev/self-hosted default when Cognito is off): `local_auth_enabled=true`
+  gives real signup/login/confirm/refresh with HMAC-signed tokens validated by the same middleware.
+
+Missing/invalid tokens get `401`. API-key auth continues to work in parallel; either credential
+is sufficient. `/api/health` and `/api/auth/*` are always public. When **no** provider is
+configured (Cognito off and `EMIP_LOCAL_AUTH_ENABLED=false`), auth endpoints return `503`.
+
+```http
+Authorization: Bearer <token>
+```
+
+### Auth endpoints (Cognito or local provider; `503` only when neither is configured)
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `POST` | `/api/auth/login` | `{"username", "password"}` | `{id_token, access_token, refresh_token, expires_in, user}` |
+| `POST` | `/api/auth/signup` | `{"username", "password", "email"}` | `{message, verification_code?}` — `verification_code` is the local-provider dev hint (never from Cognito) |
+| `POST` | `/api/auth/confirm` | `{"username", "code"}` | `{message}` |
+| `POST` | `/api/auth/refresh` | `{"refresh_token"}` | `{id_token, access_token, expires_in, user}` |
+| `GET` | `/api/auth/me` | — (bearer token) | `{username, email, name}` |
+
+`login`/`confirm`/`signup` accept either the **username or email** (local provider resolves both).
+
+Demo user setup for an environment (runs against the SAM-created pool):
+
+```bash
+aws cognito-idp admin-create-user --user-pool-id <pool-id> --username <email> \
+  --temporary-password 'DemoPass123!' --message-action SUPPRESS
+aws cognito-idp admin-set-user-password --user-pool-id <pool-id> --username <email> \
+  --password 'DemoPass123!' --permanent
+```
+
 ## Common Headers
 
 | Header | Required | Description |

@@ -7,6 +7,7 @@ interface AppState {
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   demoMode: boolean;
   toggleDemoMode: () => void;
+  setDemoMode: (on: boolean) => void;
 }
 
 function getInitialTheme(): 'light' | 'dark' | 'system' {
@@ -23,7 +24,7 @@ function getInitialSidebar(): boolean {
 
 function getInitialDemoMode(): boolean {
   if (typeof window === 'undefined') return false;
-  return localStorage.getItem('emip-demo') === 'true';
+  return sessionStorage.getItem('emip-demo') === 'true';
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -43,7 +44,11 @@ export const useAppStore = create<AppState>((set) => ({
   toggleDemoMode: () =>
     set((state) => {
       const next = !state.demoMode;
-      localStorage.setItem('emip-demo', String(next));
+      sessionStorage.setItem('emip-demo', String(next));
       return { demoMode: next };
     }),
+  setDemoMode: (on) => {
+    sessionStorage.setItem('emip-demo', String(on));
+    set({ demoMode: on });
+  },
 }));

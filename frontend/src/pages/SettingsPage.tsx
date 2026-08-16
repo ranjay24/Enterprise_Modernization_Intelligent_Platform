@@ -1,5 +1,4 @@
 import { useAppStore } from '@/store/useAppStore';
-import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/auth/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';

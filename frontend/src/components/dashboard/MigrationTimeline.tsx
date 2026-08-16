@@ -3,7 +3,7 @@ import { MigrationTimelineChart } from '@/components/charts/MigrationTimelineCha
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
-import { ArrowRight, Users, DollarSign } from 'lucide-react';
+import { Users, DollarSign } from 'lucide-react';
 
 function WaveCard({ wave }: { wave: MigrationTimelineWave }) {
   return (

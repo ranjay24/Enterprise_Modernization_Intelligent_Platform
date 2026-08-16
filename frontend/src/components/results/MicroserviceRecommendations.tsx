@@ -1,4 +1,4 @@
-import { Users, Clock, Link, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Users, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Badge } from '@/components/ui/Badge';

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle, Loader2, Circle, XCircle, ChevronDown, ChevronRight,
-  Clock, RotateCcw, Sparkles, FileText, AlertTriangle,
+  Clock, RotateCcw, Sparkles, FileText,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { PHASE_LABELS } from '@/utils/constants';
@@ -25,36 +25,6 @@ const allPhases = [
 const aiPhases = new Set([
   'ai_boundaries', 'ai_readiness', 'ai_adrs', 'ai_migration', 'ai_cost', 'ai_explainability',
 ]);
-
-const phaseColors: Record<string, string> = {
-  extraction: 'var(--stage-extraction)',
-  static_analysis: 'var(--stage-static-analysis)',
-  enterprise_analysis: 'var(--stage-enterprise)',
-  ai_boundaries: 'var(--stage-ai-boundaries)',
-  ai_readiness: 'var(--stage-ai-readiness)',
-  ai_adrs: 'var(--stage-ai-adrs)',
-  ai_migration: 'var(--stage-ai-migration)',
-  ai_cost: 'var(--stage-ai-cost)',
-  ai_explainability: 'var(--stage-ai-explain)',
-  results_assembly: 'var(--stage-results)',
-  report_generation: 'var(--stage-report)',
-  manifest: 'var(--stage-manifest)',
-};
-
-const phaseIcons: Record<string, string> = {
-  extraction: 'FileArchive',
-  static_analysis: 'Search',
-  enterprise_analysis: 'Building2',
-  ai_boundaries: 'GitBranch',
-  ai_readiness: 'Target',
-  ai_adrs: 'FileText',
-  ai_migration: 'Layers',
-  ai_cost: 'DollarSign',
-  ai_explainability: 'Brain',
-  results_assembly: 'ListTodo',
-  report_generation: 'FileText',
-  manifest: 'CheckSquare',
-};
 
 interface PipelineStagesProps {
   currentPhase: string | null;
@@ -106,7 +76,6 @@ export function PipelineStages({ currentPhase, progress, completedPhases, onRetr
             const waiting = idx > effectiveIdx;
             const failed = isFailed && active;
             const expanded = expandedPhase === phase;
-            const color = phaseColors[phase];
 
             return (
               <div key={phase} className="relative">

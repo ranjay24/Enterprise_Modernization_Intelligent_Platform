@@ -1,6 +1,5 @@
 import React from 'react';
 import { Puzzle, Link, Layout, Wrench, AlertTriangle, Activity } from 'lucide-react';
-import { cn } from '@/utils/cn';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import type { HealthMetric } from '@/types/dashboard';

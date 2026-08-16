@@ -2,7 +2,7 @@ import React from 'react';
 import { Users, ShoppingCart, CreditCard, Package, Bell, Truck } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { ConfidenceBadge, StatusBadge } from '@/components/ui/StatusBadge';
+import { ConfidenceBadge } from '@/components/ui/StatusBadge';
 import type { BusinessCapability } from '@/types/dashboard';
 
 const iconMap: Record<string, React.ElementType> = {

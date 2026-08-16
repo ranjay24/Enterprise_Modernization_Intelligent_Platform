@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Upload, FolderOpen, Loader2, CheckCircle, XCircle, Clock, Brain, Percent, LayoutDashboard, FileText, GitBranch, Trash2, Play, BarChart3 } from 'lucide-react';
+import { Upload, FolderOpen, Loader2, CheckCircle, XCircle, Clock, Brain, Percent, LayoutDashboard, GitBranch, Trash2, BarChart3 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { listJobs, pauseJob, resumeJob, cancelJob, deleteAllJobs } from '@/services/jobService';
 import { Button } from '@/components/ui/Button';

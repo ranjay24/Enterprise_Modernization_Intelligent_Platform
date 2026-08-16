@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, FileText, RotateCcw, Download } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { ExternalLink, FileText, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ReusableTable } from '@/components/ui/ReusableTable';

@@ -11,7 +11,6 @@ const barColors: Record<string, string> = {
 
 export function MigrationTimelineChart({ waves }: { waves: MigrationTimelineWave[] }) {
   const maxWeek = Math.max(...waves.map(w => w.durationWeeks.end));
-  const weekWidth = 100 / maxWeek;
 
   return (
     <div className="bg-[var(--bg-card)] rounded-xl border border-[var(--border-subtle)] p-5">

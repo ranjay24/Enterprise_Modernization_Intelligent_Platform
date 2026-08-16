@@ -1,35 +1,29 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   GitBranch,
   Box,
   Database,
-  AlertTriangle,
-  X,
-  ExternalLink,
   Layers,
   Sparkles,
   Radio,
   Loader2,
 } from 'lucide-react';
-import { useNodesState, useEdgesState, Handle, Position, type NodeProps } from 'reactflow';
-import type { Node as RFNode, Edge as RFEdge } from 'reactflow';
-import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
-import 'reactflow/dist/style.css';
 import { listJobs, getAnalysisResults, getCodeGenArchitecture, getCodeGenStatus } from '@/services/jobService';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { ReadinessBadge, RiskBadge } from '@/components/cards';
 import { EmptyState } from '@/components/common/EmptyState';
 import { TableSkeleton } from '@/components/common/LoadingSkeleton';
 import { ArchitectureGraph, ArchitectureLegend } from '@/components/codegen/ArchitectureGraph';
+import { AWSMigrationArchitecture } from '@/components/results/AWSMigrationArchitecture';
 import { cn } from '@/utils/cn';
-import type { JobResponse, ServiceBoundary, AnalysisResult } from '@/types/api';
+import type { JobResponse } from '@/types/api';
 import type { CodeGenService, ArchitectureNode } from '@/types/codegen';
-import type { CircularDependencyMetric } from '@/types/metrics';
 
 type View = 'target' | 'current';
+
+const MIGRATION_READY_STATUSES = ['generation_complete', 'generation_with_warnings'];
 
 export default function ArchitecturePage() {
   const navigate = useNavigate();
@@ -48,6 +42,8 @@ export default function ArchitecturePage() {
   );
 
   const activeJobId = selectedJobId || codegenReadyJobs[0]?.job_id;
+  const activeJob = codegenReadyJobs.find((j: JobResponse) => j.job_id === activeJobId);
+  const migrationReady = !!activeJob && MIGRATION_READY_STATUSES.includes(activeJob.status);
 
   const { data: results, isLoading: resultsLoading } = useQuery({
     queryKey: ['analysis', activeJobId],
@@ -127,7 +123,7 @@ export default function ArchitecturePage() {
             view === 'current' ? 'border-[var(--accent-blue)] text-[var(--accent-blue)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
           )}
         >
-          <Layers className="w-4 h-4" /> Current (Analysis)
+          <Layers className="w-4 h-4" /> AWS Migration
         </button>
       </div>
 
@@ -234,12 +230,23 @@ export default function ArchitecturePage() {
           </div>
         )
       ) : results ? (
-        <CurrentArchitectureView key={activeJobId} results={results} activeJobId={activeJobId} />
+        migrationReady ? (
+          <AWSMigrationArchitecture key={activeJobId} waves={results.migration_waves} services={results.service_boundaries} />
+        ) : (
+          <EmptyState
+            icon={<Layers className="w-8 h-8" />}
+            title="Generate microservices first"
+            description="AWS migration details are produced after the microservices are generated. Start code generation from the Modernization Studio."
+            action={activeJobId ? (
+              <Link to={`/jobs/${activeJobId}/studio`}><Button className="gap-2"><Sparkles className="w-4 h-4" /> Generate Microservices</Button></Link>
+            ) : undefined}
+          />
+        )
       ) : (
         <EmptyState
           icon={<GitBranch className="w-8 h-8" />}
-          title="No architecture data"
-          description="Run an analysis to view service boundaries and architecture insights."
+          title="No migration data"
+          description="Run an analysis to generate the AWS migration architecture blueprint."
           action={<Link to="/upload"><Button variant="primary">Analyze Codebase</Button></Link>}
         />
       )}
@@ -247,173 +254,3 @@ export default function ArchitecturePage() {
   );
 }
 
-function CurrentArchitectureView({ results, activeJobId }: { results: AnalysisResult; activeJobId?: string }) {
-  const [selectedService, setSelectedService] = useState<ServiceBoundary | null>(null);
-  const services = results.service_boundaries || [];
-  const metrics = (results.metrics || {}) as Record<string, unknown>;
-  const circularDeps = (metrics.circular_dependencies || []) as CircularDependencyMetric[];
-
-  const initialNodes = services.map((svc: ServiceBoundary, i: number) => ({
-    id: svc.name || `svc-${i}`,
-    type: 'service',
-    position: { x: 200 + (i % 3) * 280, y: 80 + Math.floor(i / 3) * 160 },
-    data: { service: svc, nodeType: 'service' },
-  }));
-
-  const initialEdges: RFEdge[] = [];
-  services.forEach((svc: ServiceBoundary) => {
-    (svc.dependencies || []).forEach((dep: string) => {
-      if (services.some((s: ServiceBoundary) => s.name === dep)) {
-        initialEdges.push({
-          id: `${svc.name}-${dep}`,
-          source: svc.name,
-          target: dep,
-          animated: true,
-          style: { stroke: 'var(--border-strong)', strokeWidth: 1.5 },
-        });
-      }
-    });
-  });
-
-  return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { icon: Box, label: 'Services Identified', value: services.length, color: 'bg-[var(--info-bg)] text-[var(--accent-blue)]' },
-          { icon: Database, label: 'Total Classes', value: Number(metrics.total_classes) || 0, color: 'bg-[var(--success-bg)] text-[var(--success)]' },
-          { icon: AlertTriangle, label: 'Circular Dependencies', value: circularDeps.length, color: circularDeps.length > 0 ? 'bg-[var(--danger-bg)] text-[var(--risk)]' : 'bg-[var(--border-subtle)] text-[var(--text-muted)]' },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', stat.color)}>
-                <stat.icon className="w-4.5 h-4.5" />
-              </div>
-              <span className="text-xs text-[var(--text-secondary)]">{stat.label}</span>
-            </div>
-            <p className="text-2xl font-bold text-[var(--text-primary)] tabular-nums">{stat.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex gap-4">
-        <div className="flex-1 h-[500px] rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] overflow-hidden">
-          <CurrentGraph nodes={initialNodes} edges={initialEdges} onSelect={setSelectedService} />
-        </div>
-
-        {selectedService && (
-          <div className="w-80 shrink-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 h-fit">
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-sm font-semibold text-[var(--text-primary)]">{selectedService.name}</h3>
-              <button onClick={() => setSelectedService(null)} className="p-1 rounded hover:bg-[var(--border-subtle)] text-[var(--text-muted)]">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-[var(--text-secondary)] mb-4">{selectedService.description}</p>
-            {selectedService.business_capability && <Badge variant="info" size="sm" className="mb-3">{selectedService.business_capability}</Badge>}
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              {[
-                { label: 'Cohesion', value: selectedService.cohesion_score || 0, color: (selectedService.cohesion_score || 0) >= 70 ? 'text-[var(--success)]' : 'text-[var(--warning)]' },
-                { label: 'Coupling', value: selectedService.coupling_score || 0, color: (selectedService.coupling_score || 0) <= 30 ? 'text-[var(--success)]' : 'text-[var(--warning)]' },
-                { label: 'Confidence', value: `${selectedService.confidence || 0}%`, color: (selectedService.confidence || 0) >= 80 ? 'text-[var(--success)]' : 'text-[var(--warning)]' },
-                { label: 'Classes', value: (selectedService.classes || []).length, color: 'text-[var(--text-primary)]' },
-              ].map((m) => (
-                <div key={m.label} className="rounded-lg bg-[var(--border-subtle)]/50 p-2.5 text-center">
-                  <div className={cn('text-base font-bold tabular-nums', m.color)}>{m.value}</div>
-                  <div className="text-[10px] text-[var(--text-muted)]">{m.label}</div>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-1.5 text-[11px] text-[var(--text-muted)] mb-4">
-              {selectedService.api_endpoints?.length > 0 && (
-                <p><span className="font-medium text-[var(--text-primary)]">Endpoints:</span>{' '}
-                  {selectedService.api_endpoints.map((ep) => `${ep.method || 'GET'} ${ep.path || ep.handler_class || ''}`).join(', ')}
-                </p>
-              )}
-              <p><span className="font-medium text-[var(--text-primary)]">Packages:</span> {(selectedService.packages || []).join(', ') || 'N/A'}</p>
-              {selectedService.database_tables?.length > 0 && (
-                <p><span className="font-medium text-[var(--text-primary)]">Tables:</span> {selectedService.database_tables.join(', ')}</p>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <ReadinessBadge readiness={selectedService.readiness} />
-              <RiskBadge risk={selectedService.risk_level} />
-            </div>
-            {activeJobId && (
-              <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
-                <Link to={`/jobs/${activeJobId}/results`}>
-                  <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
-                    View Full Results <ExternalLink className="w-3.5 h-3.5" />
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function CurrentGraph({ nodes, edges, onSelect }: { nodes: RFNode[]; edges: RFEdge[]; onSelect: (s: ServiceBoundary) => void }) {
-  return (
-    <CurrentFlow nodes={nodes} edges={edges} onSelect={onSelect} />
-  );
-}
-
-// Minimal wrapper to avoid react-hooks inside a plain render; reactflow state is managed here.
-const nodeTypeColors: Record<string, string> = {
-  service: 'var(--architecture)',
-  database: 'var(--analytics)',
-  queue: 'var(--warning)',
-  api: 'var(--accent-blue)',
-};
-
-function CurrentServiceNode({ data }: NodeProps) {
-  const svc = data.service;
-  return (
-    <div
-      className="px-4 py-3 rounded-xl border-2 bg-[var(--bg-card)] shadow-md cursor-pointer hover:shadow-lg transition-shadow min-w-[180px]"
-      style={{ borderColor: nodeTypeColors.service }}
-    >
-      <Handle type="target" position={Position.Top} className="!bg-[var(--border-strong)]" />
-      <div className="flex items-center gap-2 mb-1.5">
-        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: nodeTypeColors.service }} />
-        <span className="text-xs font-semibold text-[var(--text-primary)] truncate">{svc.name}</span>
-      </div>
-      {svc.cohesion_score != null && (
-        <div className="flex items-center gap-2 text-[10px] text-[var(--text-muted)]">
-          <span>Cohesion: <span className="font-medium text-[var(--text-primary)]">{svc.cohesion_score}</span></span>
-          <span>Coupling: <span className="font-medium text-[var(--text-primary)]">{svc.coupling_score}</span></span>
-        </div>
-      )}
-      <Handle type="source" position={Position.Bottom} className="!bg-[var(--border-strong)]" />
-    </div>
-  );
-}
-
-function CurrentFlow({ nodes, edges, onSelect }: { nodes: RFNode[]; edges: RFEdge[]; onSelect: (s: ServiceBoundary) => void }) {
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState(nodes);
-  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(edges);
-
-  useEffect(() => {
-    setRfNodes(nodes);
-    setRfEdges(edges);
-  }, [nodes, edges, setRfNodes, setRfEdges]);
-
-  return (
-    <ReactFlow
-      nodes={rfNodes}
-      edges={rfEdges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      nodeTypes={{ service: CurrentServiceNode }}
-      onNodeClick={(_, n) => onSelect(n.data.service)}
-      fitView
-      attributionPosition="bottom-left"
-    >
-      <Background color="var(--border-subtle)" gap={20} />
-      <Controls className="!bg-[var(--bg-card)] !border-[var(--border-subtle)]" />
-      <MiniMap className="!border-[var(--border-subtle)]" nodeColor={() => 'var(--architecture)'} maskColor="rgba(0,0,0,0.1)" />
-    </ReactFlow>
-  );
-}

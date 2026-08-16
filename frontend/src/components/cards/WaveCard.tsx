@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Users, AlertTriangle } from 'lucide-react';
+import { Clock, Users } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/Badge';
 import { StatusBadge } from '@/components/ui/StatusBadge';

@@ -1,18 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, RotateCcw, Trash2 } from 'lucide-react';
+import { ExternalLink, RotateCcw } from 'lucide-react';
 import { ReusableTable } from '@/components/ui/ReusableTable';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import type { UploadHistoryEntry } from '@/types/upload';
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

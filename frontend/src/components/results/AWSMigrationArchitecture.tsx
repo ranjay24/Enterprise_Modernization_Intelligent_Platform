@@ -2,26 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity,
-  ArrowRight,
   Box,
   Cloud,
   Database,
-  GitBranch,
   Layers,
   Lock,
   Package,
   Radio,
   Route,
-  Server,
   X,
   Zap,
   type LucideIcon,
-  Calendar,
-  Users,
 } from 'lucide-react';
 import type { AWSServiceRecommendation, MigrationWave, ServiceBoundary } from '@/types/api';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/utils/cn';
+import { buildAwsInventory, awsCategory } from '@/utils/awsInventory';
 
 type AwsCategory =
   | 'gateway'
@@ -44,33 +40,6 @@ const CATS: Record<AwsCategory, { color: string; icon: LucideIcon }> = {
   other: { color: 'var(--text-secondary)', icon: Cloud },
 };
 
-function awsCategory(name: string): AwsCategory {
-  const n = name.toLowerCase();
-  if (n.includes('api gateway')) return 'gateway';
-  if (n.includes('lambda') || n.includes('ecs') || n.includes('fargate') || n.includes('ec2') || n.includes('eks') || n.includes('app runner')) return 'compute';
-  if (n.includes('rds') || n.includes('dynamo') || n.includes('aurora') || n.includes('documentdb') || n.includes('neptune') || n.includes('elasticache') || n.includes('redshift') || n.includes('opensearch')) return 'database';
-  if (n.includes('sns') || n.includes('sqs') || n.includes('msk') || n.includes('kafka') || n.includes('eventbridge') || n.includes('kinesis') || n.includes('amazon mq') || n.includes('rabbit')) return 'messaging';
-  if (n.includes('cloudwatch') || n.includes('x-ray') || n.includes('cloudtrail')) return 'observability';
-  if (n.includes('s3') || n.includes('efs') || n.includes('ebs') || n.includes('glacier')) return 'storage';
-  if (n.includes('secrets') || n.includes('iam') || n.includes('kms') || n.includes('waf') || n.includes('guardduty') || n.includes('shield')) return 'security';
-  return 'other';
-}
-
-function riskPill(risk: string | undefined): string {
-  const r = (risk || '').toLowerCase();
-  if (r === 'low') return 'text-[var(--success)] bg-[var(--success-bg)]';
-  if (r === 'medium') return 'text-[var(--warning)] bg-[var(--warning-bg)]';
-  if (r === 'high' || r === 'critical') return 'text-[var(--risk)] bg-[var(--danger-bg)]';
-  return 'text-[var(--text-muted)] bg-[var(--border-subtle)]';
-}
-
-function readinessDot(readiness: string | undefined): string {
-  if (readiness === 'green') return 'bg-[var(--success)]';
-  if (readiness === 'yellow') return 'bg-[var(--warning)]';
-  if (readiness === 'red') return 'bg-[var(--risk)]';
-  return 'bg-[var(--text-muted)]';
-}
-
 interface AWSMigrationArchitectureProps {
   waves: MigrationWave[];
   services: ServiceBoundary[];
@@ -84,7 +53,6 @@ export function AWSMigrationArchitecture({ waves, services }: AWSMigrationArchit
 
   const selectedWave = waves.find((w) => w.wave_number === selectedWaveNumber) ?? null;
   const waveServices = selectedWave?.services ?? [];
-  const selectedMap = selectedWave?.aws_services_map?.[selectedService ?? ''] ?? [];
   const selectedRecs = selectedWave?.aws_recommendations?.[selectedService ?? ''] ?? [];
 
   const uniqueServices = useMemo(() => new Set(waves.flatMap((w) => w.services ?? [])).size, [waves]);
@@ -97,9 +65,8 @@ export function AWSMigrationArchitecture({ waves, services }: AWSMigrationArchit
       ).size,
     [waves]
   );
-
-  const totalDuration = useMemo(() => waves.reduce((sum, w) => sum + (w.timeline_weeks || 0), 0), [waves]);
-  const peakEngineers = useMemo(() => Math.max(...waves.map((w) => w.estimated_engineers || 0), 0), [waves]);
+  const inventory = useMemo(() => buildAwsInventory(waves), [waves]);
+  const inventoryCategories = Array.from(new Set(inventory.map((e) => e.category)));
 
   const selectWave = (w: MigrationWave) => {
     setSelectedWaveNumber(w.wave_number);
@@ -124,12 +91,14 @@ export function AWSMigrationArchitecture({ waves, services }: AWSMigrationArchit
     <div className="space-y-6">
       {/* Title & Description */}
       <div>
-        <h1 className="text-3xl font-bold text-[var(--text-primary)]">AWS Migration Architecture</h1>
-        <p className="text-sm text-[var(--text-secondary)] mt-1">Target AWS Deployment Blueprint for Education CRM (8 Services)</p>
+        <h1 className="text-3xl font-bold text-[var(--text-primary)]">AWS Migration</h1>
+        <p className="text-sm text-[var(--text-secondary)] mt-1">
+          Target AWS deployment blueprint across {uniqueServices} services and {waves.length} waves ({uniqueAwsServices} managed services)
+        </p>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <Layers className="w-5 h-5 text-[var(--accent-purple)]" />
@@ -150,20 +119,6 @@ export function AWSMigrationArchitecture({ waves, services }: AWSMigrationArchit
             <span className="text-2xl font-bold text-[var(--text-primary)]">{uniqueAwsServices}</span>
           </div>
           <span className="text-xs text-[var(--text-secondary)]">Managed Services</span>
-        </div>
-        <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-[var(--warning)]" />
-            <span className="text-2xl font-bold text-[var(--text-primary)]">{totalDuration}</span>
-          </div>
-          <span className="text-xs text-[var(--text-secondary)]">Weeks</span>
-        </div>
-        <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-card)] p-3 flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-[var(--risk)]" />
-            <span className="text-2xl font-bold text-[var(--text-primary)]">{peakEngineers}</span>
-          </div>
-          <span className="text-xs text-[var(--text-secondary)]">Peak Team Size</span>
         </div>
       </div>
 
@@ -195,10 +150,8 @@ export function AWSMigrationArchitecture({ waves, services }: AWSMigrationArchit
                   <span className="font-semibold text-sm text-[var(--text-primary)]">W{w.wave_number}</span>
                 </div>
                 <p className="text-xs text-[var(--text-secondary)] mb-2">{w.name}</p>
-                <div className="text-[10px] text-[var(--text-muted)] space-y-1">
+                <div className="text-[10px] text-[var(--text-muted)]">
                   <div>{w.services?.length ?? 0} Services</div>
-                  <div>Weeks {w.timeline_weeks}</div>
-                  <div>{w.estimated_engineers} eng</div>
                 </div>
               </button>
             ))}
@@ -252,9 +205,6 @@ export function AWSMigrationArchitecture({ waves, services }: AWSMigrationArchit
                       <span className="font-semibold text-sm text-[var(--text-primary)] truncate">{rec.service_name}</span>
                     </div>
                     <p className="text-xs text-[var(--text-secondary)] mb-1">{rec.use_case}</p>
-                    {rec.free_tier_eligible && (
-                      <Badge variant="success" size="sm">Free tier</Badge>
-                    )}
                   </div>
                 );
               })
@@ -279,6 +229,58 @@ export function AWSMigrationArchitecture({ waves, services }: AWSMigrationArchit
           ))}
         </div>
       </div>
+
+      {/* Full AWS resource inventory */}
+      {inventory.length > 0 && (
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+            <div>
+              <h4 className="text-sm font-semibold text-[var(--text-primary)]">AWS Resource Inventory</h4>
+              <p className="text-[11px] text-[var(--text-secondary)]">Every AWS service identified across the migration plan, grouped by category</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {inventoryCategories.map((cat) => (
+                <span key={cat} className="flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CATS[cat].color }} />
+                  {cat}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {inventory.map((entry) => {
+              const cat = CATS[entry.category];
+              const Icon = cat.icon;
+              return (
+                <div
+                  key={entry.service_name}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-base)] p-3.5"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${cat.color}14` }}>
+                        <Icon className="w-4 h-4" style={{ color: cat.color }} />
+                      </div>
+                      <span className="text-sm font-semibold text-[var(--text-primary)] truncate">{entry.service_name}</span>
+                    </div>
+                    <Badge variant="outline" size="sm">{entry.count}×</Badge>
+                  </div>
+                  <p className="text-[11px] text-[var(--accent-blue)] mb-2">{entry.use_case}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {entry.waves.map((w) => (
+                      <span key={w} className="px-1.5 py-0.5 rounded bg-[var(--border-subtle)] text-[10px] text-[var(--text-muted)]">W{w}</span>
+                    ))}
+                    <span className="text-[10px] text-[var(--text-muted)] leading-5">
+                      {entry.microservices.join(', ')}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Right sidebar — service details */}
       <ServiceDetailsDrawer

@@ -1,5 +1,4 @@
 import { AlertOctagon, Zap, XCircle } from 'lucide-react';
-import { cn } from '@/utils/cn';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DebtCard } from '@/components/cards/DebtCard';
 import { Badge } from '@/components/ui/Badge';

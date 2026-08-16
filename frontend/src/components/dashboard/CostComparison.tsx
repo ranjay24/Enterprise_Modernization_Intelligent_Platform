@@ -2,7 +2,7 @@ import type { CostBreakdownData, ChartDataPoint } from '@/types/dashboard';
 import { CostTrendChart } from '@/components/charts/CostTrendChart';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { cn } from '@/utils/cn';
-import { TrendingDown, DollarSign, Clock, PiggyBank } from 'lucide-react';
+import { Clock, PiggyBank } from 'lucide-react';
 
 function StatBlock({ label, value, icon, color }: { label: string; value: string; icon: React.ReactNode; color: string }) {
   return (

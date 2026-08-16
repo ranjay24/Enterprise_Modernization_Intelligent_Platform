@@ -1045,6 +1045,123 @@ def _complexity_rank(level: str) -> int:
     return {"low": 0, "moderate": 1, "medium": 1, "high": 2}.get(level, 1)
 
 
+_RELATIONAL_TABLE_RE = re.compile(
+    r"\b(mysql|oracle|postgres|sqlserver|db2|sql|schema|account|order|invoice|payment|customer)",
+    re.IGNORECASE,
+)
+_FILE_CLASS_RE = re.compile(
+    r"\b(File|Blob|Attachment|Storage|Document|Upload|Download)",
+    re.IGNORECASE,
+)
+
+
+def recommend_aws_services(service: dict) -> list[dict]:
+    """Deterministic AWS target recommendation for one boundary service.
+
+    Returns AWSServiceRecommendation-shaped dicts:
+    {service_name, use_case, justification, alternatives, pricing_model,
+    free_tier_eligible}. Rules run in priority order (Spec 19) and are
+    capped at 6 per service. No Bedrock/AI calls.
+    """
+    recommendations: list[dict] = []
+    endpoints = service.get("api_endpoints", []) or []
+    tables = service.get("database_tables", []) or []
+    classes = service.get("classes", []) or []
+    broker_role = str(service.get("broker_role", "none")).strip().lower()
+
+    if not isinstance(endpoints, list):
+        endpoints = []
+    if not isinstance(tables, list):
+        tables = []
+    if not isinstance(classes, list):
+        classes = []
+
+    def _add(service_name: str, use_case: str, justification: str) -> None:
+        recommendations.append({
+            "service_name": service_name,
+            "use_case": use_case,
+            "justification": justification,
+            "alternatives": ["Self-hosted equivalent"],
+            "pricing_model": "pay-as-you-go",
+            "free_tier_eligible": True,
+        })
+
+    if endpoints:
+        _add(
+            "Amazon API Gateway",
+            "REST API exposure",
+            f"Exposes {len(endpoints)} REST endpoints",
+        )
+
+    if tables:
+        if any(_RELATIONAL_TABLE_RE.search(str(table)) for table in tables):
+            _add(
+                "Amazon RDS",
+                "Relational data store",
+                f"Owns {len(tables)} relational tables",
+            )
+        else:
+            _add(
+                "Amazon DynamoDB",
+                "NoSQL data store",
+                f"Owns {len(tables)} tables with no relational schema",
+            )
+
+    if broker_role in ("kafka", "both"):
+        _add(
+            "Amazon MSK",
+            "Event streaming",
+            "Publishes/subscribes inter-service events",
+        )
+    if broker_role in ("rabbitmq", "both"):
+        _add(
+            "Amazon MQ",
+            "Command queue",
+            "Uses RabbitMQ-style command queueing",
+        )
+
+    if any(_FILE_CLASS_RE.search(str(class_name)) for class_name in classes):
+        _add(
+            "Amazon S3",
+            "Object/file storage",
+            "Handles file/blob artifacts",
+        )
+
+    if len(classes) > 6 or tables:
+        _add(
+            "Amazon ECS on Fargate",
+            "Compute",
+            "Containerized service with managed orchestration",
+        )
+    else:
+        _add(
+            "AWS Lambda",
+            "Compute",
+            "Event-driven serverless compute",
+        )
+
+    _add(
+        "Amazon CloudWatch",
+        "Observability",
+        "Logs, metrics and alarms",
+    )
+
+    # CloudWatch and compute are always-on per the spec; when over the 6-cap,
+    # drop the lowest-priority data rule (reverse insertion order) first.
+    protected = {"Amazon CloudWatch", "Amazon ECS on Fargate", "AWS Lambda"}
+    if len(recommendations) > 6:
+        removable = [
+            i for i, rec in enumerate(recommendations)
+            if rec["service_name"] not in protected
+        ]
+        for idx in reversed(removable):
+            if len(recommendations) <= 6:
+                break
+            recommendations.pop(idx)
+
+    return recommendations
+
+
 def generate_migration_waves(
     boundaries: list[dict], readiness: dict, analysis_data: dict | None = None
 ) -> dict:
@@ -1135,6 +1252,14 @@ def generate_migration_waves(
             if _complexity_rank(svc_complexity) > _complexity_rank(complexity):
                 complexity = svc_complexity
 
+        aws_services_map: dict[str, list[str]] = {}
+        aws_recommendations: dict[str, list[dict]] = {}
+        for i, svc in enumerate(group):
+            svc_name = service_names[i]
+            recs = recommend_aws_services(svc)
+            aws_services_map[svc_name] = [r["service_name"] for r in recs]
+            aws_recommendations[svc_name] = recs
+
         waves.append({
             "wave_number": wave_number,
             "name": f"Wave {wave_number}: {service_names[0]}",
@@ -1145,6 +1270,8 @@ def generate_migration_waves(
             "risk_level": risk_level,
             "migration_complexity": complexity,
             "justification": justification,
+            "aws_services_map": aws_services_map,
+            "aws_recommendations": aws_recommendations,
         })
         wave_number += 1
 

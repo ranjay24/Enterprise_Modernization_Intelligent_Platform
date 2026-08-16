@@ -1,6 +1,5 @@
 import { Loader2, CheckCircle, XCircle, Upload } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import type { JobStatus } from '@/types';
 
 const config: Record<string, { icon: React.ElementType; color: string; label: string }> = {
   uploaded: { icon: Upload, color: 'text-muted-foreground bg-muted', label: 'Uploaded' },

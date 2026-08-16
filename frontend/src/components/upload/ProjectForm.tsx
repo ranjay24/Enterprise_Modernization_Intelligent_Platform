@@ -1,7 +1,6 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { Button } from '@/components/ui/Button';
 import type { ProjectMetadata } from '@/types/upload';
 
 interface ProjectFormProps {

@@ -12,7 +12,6 @@ function computeHealthMetrics(analysis: AnalysisResult): HealthMetric[] {
   const circularDeps = (analysis.metrics?.circular_dependencies || []) as CircularDependencyMetric[];
   const deadCode = (analysis.metrics?.dead_code || []) as DeadCodeMetric[];
   const services = analysis.service_boundaries || [];
-  const totalClasses = (analysis.metrics?.total_classes as number) || 0;
   const avgCohesion = services.length > 0
     ? Math.round(services.reduce((s, svc) => s + svc.cohesion_score, 0) / services.length)
     : 0;

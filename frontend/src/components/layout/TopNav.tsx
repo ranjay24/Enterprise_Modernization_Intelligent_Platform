@@ -72,8 +72,6 @@ export function TopNav() {
     if (next) markSeen();
   }
 
-  const avatarInitial = (user?.name || user?.email || 'G').charAt(0).toUpperCase();
-
   return (
     <header className="h-12 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)] flex items-center justify-between px-4 sticky top-0 z-20">
       <div className="flex items-center gap-3 min-w-0">

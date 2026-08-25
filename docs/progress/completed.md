@@ -41,6 +41,17 @@
 | Cognito authentication (frontend: login/signup pages, demo bypass, notifications) | Abhijeet | 2026-08-09 | specs/18-cognito-auth.md |
 | Auth UX polish — animated showcase, split layout, session-scoped demo | Abhijeet | 2026-08-09 | specs/18-cognito-auth.md |
 | Real signup — built-in local auth provider + showcase story (drop→scan→yay→AWS→web) | Abhijeet | 2026-08-09 | specs/18-cognito-auth.md |
+| AWS Service Recommendations — Spec 19 (backend mapping + frontend sections + ESLint + AIChat) | Abhijeet | 2026-08-09 | specs/19-aws-service-recommendations.md |
+| AWS Migration view — 3-column linked architecture (waves → microservices → AWS targets) | Abhijeet | 2026-08-09 | - |
+
+## AWS Service Recommendations — Spec 19 (2026-08-09)
+Backend: 22 new tests pass; frontend: `npm run lint` exit 0, `npm run build` green. Uncommitted, per project rules.
+- **Backend** (`app/ai/orchestrator.py`): deterministic `recommend_aws_services()` mapping (API Gateway / RDS / DynamoDB / MSK / MQ / S3 / Fargate-or-Lambda / CloudWatch, capped at 6) attached as additive per-wave `aws_services_map` + `aws_recommendations`; `services` stays `string[]`. New `tests/test_aws_service_recommendations.py` (22).
+- **Frontend**: `AWSServiceRecommendation` + 2 optional `MigrationWave` fields (`types/api.ts`); "AWS Target Services" chips in Migration Planner wave drawer; new `components/results/AWSTargetSection.tsx` mounted in ResultsPage after MicroserviceRecommendations; demo data in `mockResults.ts`.
+- **ESLint (#48)**: `eslint@^8.57.0` + `@typescript-eslint/*` + react-hooks + react-refresh devDeps; new `.eslintrc.cjs`; fixed 50 pre-existing unused-import/variable errors across 32 files. `npm run lint` exits 0 (2 fast-refresh warnings remain).
+- **AIChat (#47)**: `dangerouslySetInnerHTML` + `sanitizeMarkdown` removed; assistant messages render via `react-markdown`. No `dangerouslySetInnerHTML` left in the repo.
+- **Review pass (edge-case hardening)**: regexes now word-boundary anchored (`\b`) so `ProfileController` no longer maps to S3 nor `border`/`reorder` tables to RDS, while plurals (`orders`, `customers`, `payments`) still match; CloudWatch + compute now always survive the 6-cap (lowest-priority data rule dropped instead); `useCompletedJobs` gained a demo-mode fallback so Migration Planner/Reports preview the feature in demo mode; AIChat markdown styled via a `components` map (headings/tables/code). Mapping tests now 22.
+- **Note**: full backend suite reports 19 pre-existing failures in `test_sprint5_*` (executors + performance); confirmed by stashing this change — they fail on the clean tree too.
 
 ## Real Signup — Local Auth Provider (2026-08-09)
 Backend suite **463 passed**; `npm run build` green; live e2e verified on :8000 (signup → code → confirm → login → `/me` with token). Uncommitted, per project rules.

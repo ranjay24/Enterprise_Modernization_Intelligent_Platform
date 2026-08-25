@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2, CheckCircle, XCircle, Upload, Clock, Ban, AlertCircle, FileText, Brain, BarChart3, Pause } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Upload, Clock, Ban, AlertCircle, FileText, Brain, Pause } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import type { JobExtendedStatus } from '@/types/jobs';
 import { STATUS_CONFIG } from '@/types/jobs';

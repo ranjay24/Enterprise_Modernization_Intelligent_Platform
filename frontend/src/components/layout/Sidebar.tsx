@@ -4,7 +4,6 @@ import {
   Upload,
   ListTodo,
   GitBranch,
-  FileText,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -12,8 +11,6 @@ import {
   Command,
   BarChart3,
   Layers,
-  Code2,
-  Bell,
   Sparkles,
   Wand2,
 } from 'lucide-react';

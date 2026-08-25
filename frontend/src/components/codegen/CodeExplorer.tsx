@@ -42,7 +42,7 @@ interface CodeExplorerProps {
   height?: string;
 }
 
-export function CodeExplorer({ code, onOpenFile, height = 'h-[520px]' }: CodeExplorerProps) {
+export function CodeExplorer({ code, onOpenFile, height = 'h-[70vh]' }: CodeExplorerProps) {
   const [openDirs, setOpenDirs] = useState<Set<string>>(new Set(['.']));
   const [selected, setSelected] = useState<TreeFile | null>(null);
   const [copied, setCopied] = useState(false);
@@ -112,16 +112,16 @@ export function CodeExplorer({ code, onOpenFile, height = 'h-[520px]' }: CodeExp
 
   return (
     <div className={cn('rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] overflow-hidden', height)}>
-      <div className="grid grid-cols-2 h-full">
-        <div className="border-r border-[var(--border-subtle)] overflow-y-auto p-2">
+      <div className="grid grid-cols-2 h-full min-h-0">
+        <div className="border-r border-[var(--border-subtle)] overflow-y-auto min-h-0 p-2">
           {code.files && code.files.length > 0 ? (
             renderNode(tree, 0)
           ) : (
             <p className="text-xs text-[var(--text-muted)] p-3">No files generated yet.</p>
           )}
         </div>
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50">
+        <div className="flex flex-col min-w-0 min-h-0">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 shrink-0">
             <span className="text-[11px] text-[var(--text-muted)] truncate">
               {selected ? selected.path : 'Select a file to view'}
             </span>
@@ -135,7 +135,7 @@ export function CodeExplorer({ code, onOpenFile, height = 'h-[520px]' }: CodeExp
               </button>
             )}
           </div>
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto min-h-0">
             {selected ? (
               <pre className="p-3 text-[11px] leading-relaxed text-[var(--text-primary)] whitespace-pre font-mono">
                 <code>{selected.content}</code>

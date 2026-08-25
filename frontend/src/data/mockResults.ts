@@ -8,6 +8,23 @@ import type {
   GeneratedArtifact,
   ExportOption,
 } from '@/types/results';
+import type { AWSServiceRecommendation } from '@/types/api';
+
+const awsRec = (
+  serviceName: string,
+  useCase: string,
+  justification: string,
+  overrides: Partial<AWSServiceRecommendation> = {},
+): AWSServiceRecommendation => ({
+  service_name: serviceName,
+  use_case: useCase,
+  justification,
+  alternatives: ['Self-hosted equivalent'],
+  pricing_model: 'pay-as-you-go',
+  free_tier_eligible: true,
+  ...overrides,
+});
+
 
 export const mockAnalysisResult: AnalysisResult = {
   job_id: 'demo-results-001',
@@ -272,6 +289,31 @@ export const mockAnalysisResult: AnalysisResult = {
       dependencies: [],
       risk_level: 'low',
       migration_complexity: 'low',
+      aws_services_map: {
+        NotificationService: ['Amazon API Gateway', 'AWS Lambda', 'Amazon SNS', 'Amazon CloudWatch'],
+        InventoryService: ['Amazon API Gateway', 'Amazon RDS', 'Amazon ECS on Fargate', 'Amazon CloudWatch'],
+        UserService: ['Amazon API Gateway', 'Amazon DynamoDB', 'AWS Lambda', 'Amazon CloudWatch'],
+      },
+      aws_recommendations: {
+        NotificationService: [
+          awsRec('Amazon API Gateway', 'REST API exposure', 'Exposes notification dispatch endpoints'),
+          awsRec('AWS Lambda', 'Compute', 'Event-driven serverless dispatch'),
+          awsRec('Amazon SNS', 'Event streaming', 'Fan-out notifications to subscribers'),
+          awsRec('Amazon CloudWatch', 'Observability', 'Logs, metrics and alarms'),
+        ],
+        InventoryService: [
+          awsRec('Amazon API Gateway', 'REST API exposure', 'Exposes inventory read/write endpoints'),
+          awsRec('Amazon RDS', 'Relational data store', 'Owns inventory tables with relational schema'),
+          awsRec('Amazon ECS on Fargate', 'Compute', 'Containerized service with managed orchestration'),
+          awsRec('Amazon CloudWatch', 'Observability', 'Logs, metrics and alarms'),
+        ],
+        UserService: [
+          awsRec('Amazon API Gateway', 'REST API exposure', 'Exposes user profile endpoints'),
+          awsRec('Amazon DynamoDB', 'NoSQL data store', 'Owns user tables with no relational schema'),
+          awsRec('AWS Lambda', 'Compute', 'Event-driven serverless compute'),
+          awsRec('Amazon CloudWatch', 'Observability', 'Logs, metrics and alarms'),
+        ],
+      },
     },
     {
       wave_number: 2,
@@ -282,6 +324,31 @@ export const mockAnalysisResult: AnalysisResult = {
       dependencies: ['Wave 1'],
       risk_level: 'medium',
       migration_complexity: 'medium',
+      aws_services_map: {
+        PaymentService: ['Amazon API Gateway', 'Amazon ECS on Fargate', 'Amazon RDS', 'Amazon CloudWatch'],
+        CartService: ['Amazon API Gateway', 'Amazon DynamoDB', 'AWS Lambda', 'Amazon CloudWatch'],
+        OrderService: ['Amazon API Gateway', 'Amazon RDS', 'Amazon ECS on Fargate', 'Amazon CloudWatch'],
+      },
+      aws_recommendations: {
+        PaymentService: [
+          awsRec('Amazon API Gateway', 'REST API exposure', 'Exposes payment processing endpoints'),
+          awsRec('Amazon ECS on Fargate', 'Compute', 'Containerized service with managed orchestration'),
+          awsRec('Amazon RDS', 'Relational data store', 'Owns payment and ledger tables'),
+          awsRec('Amazon CloudWatch', 'Observability', 'Logs, metrics and alarms'),
+        ],
+        CartService: [
+          awsRec('Amazon API Gateway', 'REST API exposure', 'Exposes cart management endpoints'),
+          awsRec('Amazon DynamoDB', 'NoSQL data store', 'Owns cart tables with no relational schema'),
+          awsRec('AWS Lambda', 'Compute', 'Event-driven serverless compute'),
+          awsRec('Amazon CloudWatch', 'Observability', 'Logs, metrics and alarms'),
+        ],
+        OrderService: [
+          awsRec('Amazon API Gateway', 'REST API exposure', 'Exposes order lifecycle endpoints'),
+          awsRec('Amazon RDS', 'Relational data store', 'Owns order tables with relational schema'),
+          awsRec('Amazon ECS on Fargate', 'Compute', 'Containerized service with managed orchestration'),
+          awsRec('Amazon CloudWatch', 'Observability', 'Logs, metrics and alarms'),
+        ],
+      },
     },
     {
       wave_number: 3,
@@ -292,6 +359,25 @@ export const mockAnalysisResult: AnalysisResult = {
       dependencies: ['Wave 2'],
       risk_level: 'medium',
       migration_complexity: 'medium',
+      aws_services_map: {
+        'API Gateway': ['Amazon API Gateway', 'Amazon CloudWatch'],
+        'Event Bus': ['Amazon MSK', 'Amazon CloudWatch'],
+        'Service Mesh': ['Amazon ECS on Fargate', 'Amazon CloudWatch'],
+      },
+      aws_recommendations: {
+        'API Gateway': [
+          awsRec('Amazon API Gateway', 'REST API exposure', 'Centralized API ingress for the platform'),
+          awsRec('Amazon CloudWatch', 'Observability', 'Logs, metrics and alarms'),
+        ],
+        'Event Bus': [
+          awsRec('Amazon MSK', 'Event streaming', 'Publishes/subscribes inter-service events'),
+          awsRec('Amazon CloudWatch', 'Observability', 'Logs, metrics and alarms'),
+        ],
+        'Service Mesh': [
+          awsRec('Amazon ECS on Fargate', 'Compute', 'Sidecar-enabled containerized services'),
+          awsRec('Amazon CloudWatch', 'Observability', 'Logs, metrics and alarms'),
+        ],
+      },
     },
     {
       wave_number: 4,
@@ -302,6 +388,17 @@ export const mockAnalysisResult: AnalysisResult = {
       dependencies: ['Wave 2', 'Wave 3'],
       risk_level: 'high',
       migration_complexity: 'high',
+      aws_services_map: {
+        OrderManagementService: ['Amazon API Gateway', 'Amazon ECS on Fargate', 'Amazon RDS', 'Amazon CloudWatch'],
+      },
+      aws_recommendations: {
+        OrderManagementService: [
+          awsRec('Amazon API Gateway', 'REST API exposure', 'Exposes order management endpoints'),
+          awsRec('Amazon ECS on Fargate', 'Compute', 'Containerized service with managed orchestration'),
+          awsRec('Amazon RDS', 'Relational data store', 'Owns order and fulfilment tables'),
+          awsRec('Amazon CloudWatch', 'Observability', 'Logs, metrics and alarms'),
+        ],
+      },
     },
   ],
   cost_comparison: {

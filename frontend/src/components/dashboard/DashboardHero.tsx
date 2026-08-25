@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Download, GitBranch, FileText, AlertTriangle, DollarSign, Database, Package, Shield } from 'lucide-react';
+import { Download, GitBranch } from 'lucide-react';
 import { GlassCard, GlassCardContent } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/utils/cn';

@@ -1,4 +1,4 @@
-import type { AnalysisResult, ServiceBoundary, ADR } from './api';
+import type { AnalysisResult, ServiceBoundary } from './api';
 
 export interface ConfidenceFactor {
   id: string;
@@ -327,12 +327,10 @@ export function computeArtifacts(analysis: AnalysisResult): GeneratedArtifact[] 
   const adrs = analysis.adrs || [];
   const waves = analysis.migration_waves || [];
   const readiness = analysis.readiness || {};
-  const cost = analysis.cost_comparison || {};
   const hasServices = services.length > 0;
   const hasAdrs = adrs.length > 0;
   const hasWaves = waves.length > 0;
   const hasReadiness = getScore(readiness.overall) > 0;
-  const hasCost = (cost.monthly_savings || 0) > 0;
   return [
     {
       id: 'art-arch-report',

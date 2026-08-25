@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { X, Clock, FileArchive, User, Tag, Building2, ExternalLink } from 'lucide-react';
+import { X, FileArchive, User, Tag, Building2, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';

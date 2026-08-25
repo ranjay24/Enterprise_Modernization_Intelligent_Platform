@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/Badge';
 import { ConfidenceBadge, StatusBadge } from '@/components/ui/StatusBadge';
 import type { ADRPreview } from '@/types/dashboard';

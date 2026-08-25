@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle, XCircle, Loader2, AlertTriangle, Circle } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Circle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/utils/cn';
 import type { UploadValidation } from '@/types/upload';

@@ -69,6 +69,15 @@ export interface ADR {
   };
 }
 
+export interface AWSServiceRecommendation {
+  service_name: string;
+  use_case: string;
+  justification: string;
+  alternatives?: string[];
+  pricing_model?: string;
+  free_tier_eligible?: boolean;
+}
+
 export interface MigrationWave {
   wave_number: number;
   name: string;
@@ -78,6 +87,8 @@ export interface MigrationWave {
   dependencies: string[];
   risk_level: string;
   migration_complexity?: string;
+  aws_services_map?: Record<string, string[]>;
+  aws_recommendations?: Record<string, AWSServiceRecommendation[]>;
 }
 
 export interface CostComparison {

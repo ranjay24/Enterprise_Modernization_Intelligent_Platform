@@ -24,7 +24,7 @@ import {
   getCodeGenReview,
   getJobStatus,
 } from '@/services/jobService';
-import type { CodeGenStatus, ArchitectureDesign, CodeGenPlan, CodeGenCodeResponse, ReviewReport, ServiceOrigin, CodeGenService } from '@/types';
+import type { CodeGenStatus, ArchitectureDesign, CodeGenPlan, ReviewReport, ServiceOrigin, CodeGenService } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/common/LoadingSkeleton';

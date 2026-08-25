@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import { ProgressBar } from '@/components/ui/ProgressBar';
 import { ConfidenceBadge } from '@/components/ui/StatusBadge';
 import type { ExplainabilityEntry } from '@/types/dashboard';
 

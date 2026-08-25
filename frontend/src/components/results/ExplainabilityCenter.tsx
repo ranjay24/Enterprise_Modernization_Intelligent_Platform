@@ -1,7 +1,6 @@
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ExplainabilityCard } from '@/components/cards/ExplainabilityCard';
 import { Badge } from '@/components/ui/Badge';
-import { ConfidenceBadge } from '@/components/ui/StatusBadge';
 import type { AnalysisResult } from '@/types/api';
 import type { ExplainabilityEntry, ConfidenceFactor } from '@/types/dashboard';
 import type { ExplainabilityData, ExplainabilityRecommendation } from '@/types/metrics';

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, X, Send, Sparkles, Lightbulb, Code2, DollarSign, ArrowRight } from 'lucide-react';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/utils/cn';
@@ -19,15 +20,6 @@ const suggestedPrompts = [
   { icon: DollarSign, text: 'Estimate AWS cost for migration' },
 ];
 
-function sanitizeMarkdown(text: string) {
-  return text
-    .replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
-      return `<pre class="text-mono text-xs leading-relaxed p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] overflow-x-auto"><code>${code.trim()}</code></pre>`;
-    })
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-    .replace(/\n/g, '<br />');
-}
-
 function TypingIndicator() {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
@@ -42,6 +34,38 @@ function TypingIndicator() {
     </div>
   );
 }
+
+const markdownComponents: Components = {
+  h1: ({ children }) => <h1 className="text-sm font-bold text-[var(--text-primary)] mt-2 mb-1 first:mt-0">{children}</h1>,
+  h2: ({ children }) => <h2 className="text-sm font-bold text-[var(--text-primary)] mt-2 mb-1 first:mt-0">{children}</h2>,
+  h3: ({ children }) => <h3 className="text-[13px] font-semibold text-[var(--text-primary)] mt-2 mb-1">{children}</h3>,
+  p: ({ children }) => <p className="text-sm leading-relaxed text-[var(--text-primary)] my-1">{children}</p>,
+  ul: ({ children }) => <ul className="list-disc pl-4 my-1 space-y-0.5 text-sm text-[var(--text-primary)]">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal pl-4 my-1 space-y-0.5 text-sm text-[var(--text-primary)]">{children}</ol>,
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold text-[var(--text-primary)]">{children}</strong>,
+  em: ({ children }) => <em className="italic text-[var(--text-primary)]">{children}</em>,
+  a: ({ children, href }) => (
+    <a href={href} className="text-[var(--accent-blue)] underline">{children}</a>
+  ),
+  code: ({ children }) => (
+    <code className="text-mono text-xs bg-[var(--border-subtle)] px-1 py-0.5 rounded">{children}</code>
+  ),
+  pre: ({ children }) => (
+    <pre className="text-mono text-xs leading-relaxed p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] overflow-x-auto my-1">{children}</pre>
+  ),
+  table: ({ children }) => (
+    <div className="overflow-x-auto my-1">
+      <table className="w-full text-xs border-collapse">{children}</table>
+    </div>
+  ),
+  th: ({ children }) => (
+    <th className="px-2 py-1 text-left font-semibold text-[var(--text-primary)] border border-[var(--border-subtle)] bg-[var(--border-subtle)]/40">{children}</th>
+  ),
+  td: ({ children }) => (
+    <td className="px-2 py-1 border border-[var(--border-subtle)] text-[var(--text-secondary)]">{children}</td>
+  ),
+};
 
 const panelVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.96 },
@@ -251,9 +275,12 @@ export function AIChat() {
                               ? 'bg-[var(--accent-blue)] text-white rounded-tr-md'
                               : 'bg-[var(--accent-purple)]/8 text-[var(--text-primary)] rounded-tl-md border border-[var(--border-subtle)]'
                           )}
-                          dangerouslySetInnerHTML={msg.role === 'assistant' ? { __html: sanitizeMarkdown(msg.content) } : undefined}
                         >
-                          {msg.role === 'user' && msg.content}
+                          {msg.role === 'user' ? (
+                            msg.content
+                          ) : (
+                            <ReactMarkdown components={markdownComponents}>{msg.content}</ReactMarkdown>
+                          )}
                         </div>
                       </div>
                     ))}
